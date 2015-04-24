@@ -1584,7 +1584,7 @@ class GShoppingFlux extends Module
             $product_link = $this->context->link->getProductLink((int) ($product['id_product']), $product['link_rewrite'], $cat_link_rew, $product['ean13'], (int) ($product['id_lang']), $id_shop, 0, true);
             
             // Product name
-		$title_crop = ucfirst(mb_strtolower($product['name'], self::CHARSET));
+		$title_crop = $product['name'];
 		// Michael Hjulskov
 		//  Product color attribute, if any
 		if(!empty($product['color']))	
