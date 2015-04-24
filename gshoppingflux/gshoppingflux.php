@@ -1584,7 +1584,7 @@ class GShoppingFlux extends Module
             $product_link = $this->context->link->getProductLink((int) ($product['id_product']), $product['link_rewrite'], $cat_link_rew, $product['ean13'], (int) ($product['id_lang']), $id_shop, 0, true);
             
             // Product name
-		$title_crop = ucfirst(mb_strtolower($product['name'], self::CHARSET));
+		$title_crop = $product['name'];
 		// Michael Hjulskov
 		//  Product color attribute, if any
 		if(!empty($product['color']))	
@@ -1601,7 +1601,7 @@ class GShoppingFlux extends Module
                 $title_crop = substr($title_crop, 0, strrpos($title_crop, " "));
             }
             
-			// Description type
+		// Description type
             if ($module_conf['description'] == 'long') {
                 $description_crop = $product['description'];
             } else if ($module_conf['description'] == 'short') {
@@ -1616,13 +1616,13 @@ class GShoppingFlux extends Module
                 $description_crop = substr($description_crop, 0, strrpos($description_crop, " ")).' ...';
             }
             $xml_googleshopping .= '<item>' . "\n";
-            $xml_googleshopping .= '<g:id>' . $product['gid'] . '-' . $lang['iso_code'] . '</g:id>' . "\n";
+            $xml_googleshopping .= '<g:id>' . $product['gid'] . '</g:id>' . "\n";
             $xml_googleshopping .= '<title><![CDATA[' . $title_crop . ']]></title>' . "\n";
             $xml_googleshopping .= '<description><![CDATA[' . $description_crop . ']]></description>' . "\n";
             $xml_googleshopping .= '<link><![CDATA[' . htmlspecialchars($product_link, self::REPLACE_FLAGS, self::CHARSET, false) . ']]></link>' . "\n";
             
             // Image links 
-			$images       = Image::getImages($lang['id_lang'], $product['id_product']);
+	    $images       = Image::getImages($lang['id_lang'], $product['id_product']);
             $indexTabLang = 0;            
             if ($tailleTabLang > 1) {
                 while (sizeof($images) < 1 && $indexTabLang < $tailleTabLang) {
