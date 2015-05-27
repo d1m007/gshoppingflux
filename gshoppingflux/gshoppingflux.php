@@ -1586,7 +1586,7 @@ class GShoppingFlux extends Module
         $xml .= '<link href="' . htmlspecialchars($this->uri, self::REPLACE_FLAGS, self::CHARSET, false) . '" rel="alternate" type="text/html"/>' . "\n";
 		$xml .= '<image>' . "\n";
 		$xml .= '<title><![CDATA[' . Configuration::get('PS_SHOP_NAME') . ']]></title>' . "\n";
-		$xml .= '<url>' .  htmlspecialchars($link->getMediaLink(_PS_IMG_.Configuration::get('PS_LOGO')), self::REPLACE_FLAGS, self::CHARSET, false) . "\n";
+		$xml .= '<url>' . htmlspecialchars($this->context->link->getMediaLink(_PS_IMG_.Configuration::get('PS_LOGO')), self::REPLACE_FLAGS, self::CHARSET, false) . "\n";
 		$xml .= '<link>' . htmlspecialchars($shop_uri, self::REPLACE_FLAGS, self::CHARSET, false) . '</link>' . "\n";
 		$xml .= '</image>' . "\n";
         $xml .= '<modified>' . date('Y-m-d') . 'T01:01:01Z</modified>' . "\n";
