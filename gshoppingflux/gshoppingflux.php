@@ -1634,7 +1634,7 @@ class GShoppingFlux extends Module
 		));
 	}
 
-	public function customGetNestedCategories($shop_id, $root_category = null, $id_lang = false, $active = true, $groups = null, $use_shop_restriction = true, $sql_filter = '', $sql_sort = '', $sql_limit = '')
+	public function customGetNestedCategories($shop_id, $root_category = null, $id_lang = false, $active = true, $groups = null, $use_shop_restriction = true, $sql_sort = '', $sql_limit = '')
 	{
 		if (isset($root_category) && !Validate::isInt($root_category))
 			die(Tools::displayError());
@@ -1656,7 +1656,7 @@ class GShoppingFlux extends Module
 				LEFT JOIN `'._DB_PREFIX_.'gshoppingflux` g ON g.`id_gcategory` = c.`id_category` AND g.`id_shop` = "'.(int)$shop_id.'"
 				LEFT JOIN `'._DB_PREFIX_.'gshoppingflux_lang` gl ON gl.`id_gcategory` = c.`id_category` AND gl.`id_shop` = "'.(int)$shop_id.'"
 				LEFT JOIN '._DB_PREFIX_.'shop s ON s.`id_shop` = "'.(int)$shop_id.'"
-				WHERE 1 '.$sql_filter.' '.($id_lang ? 'AND cl.`id_lang` = '.(int)$id_lang.' AND gl.`id_lang` = '.(int)$id_lang : '')
+				WHERE 1 '.($id_lang ? 'AND cl.`id_lang` = '.(int)$id_lang.' AND gl.`id_lang` = '.(int)$id_lang : '')
 				.($active ? ' AND c.`active` = 1' : '') 
 				.(isset($groups) && Group::isFeatureActive() ? ' AND cg.`id_group` IN ('.implode(',', $groups).')' : '')
 				.(!$id_lang || (isset($groups) && Group::isFeatureActive()) ? ' GROUP BY c.`id_category`' : '')
@@ -1738,7 +1738,6 @@ class GShoppingFlux extends Module
 	{
 		$id_lang = (int)$this->context->language->id;
 		$id_shop = (int)Shop::getContextShopID();
-		$sql_filter = ';';
 		$sql_sort = '';
 		$sql_limit = '';
 
@@ -1753,7 +1752,7 @@ class GShoppingFlux extends Module
 		$category = new Category((int)$id_cat, (int)$id_lang);
 
 		if (Validate::isLoadedObject($category)) {
-			$tabcat  = $this->customGetNestedCategories($id_shop, $id_cat, $id_lang, true, $this->user_groups, true, $sql_filter, $sql_sort, $sql_limit);
+			$tabcat  = $this->customGetNestedCategories($id_shop, $id_cat, $id_lang, true, $this->user_groups, true, $sql_sort, $sql_limit);
 			$catlist = array_merge($catlist, $tabcat);
 		}
 
