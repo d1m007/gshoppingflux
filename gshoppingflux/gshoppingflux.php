@@ -2668,6 +2668,8 @@ class GShoppingFlux extends Module
         }
         if (!empty($ta['query'])) {
             $ta['query']='?'.$ta['query'];
+        } else {
+	    $ta['query'] = "";
         }
         if (!empty($ta['fragment'])) {
             $ta['fragment']='#'.$ta['fragment'];
