@@ -34,7 +34,7 @@ class GShoppingFlux extends Module
     {
         $this->name = 'gshoppingflux';
         $this->tab = 'smart_shopping';
-        $this->version = '2.0.0';
+        $this->version = '1.7.5';
         $this->author = 'Dim00z';
 
         $this->bootstrap = true;
@@ -55,6 +55,18 @@ class GShoppingFlux extends Module
         $this->ps_stock_management = Configuration::get('PS_STOCK_MANAGEMENT');
         $this->ps_shipping_handling = (float) Configuration::get('PS_SHIPPING_HANDLING');
         $this->free_shipping = Configuration::getMultiple(['PS_SHIPPING_FREE_PRICE', 'PS_SHIPPING_FREE_WEIGHT']);
+    }
+
+    /**
+     * Get price display precision for PS9 compatibility
+     * @return int
+     */
+    private function getPriceDisplayPrecision()
+    {
+        if (defined('$this->getPriceDisplayPrecision()')) {
+            return $this->getPriceDisplayPrecision();
+        }
+        return (int) Configuration::get('PS_PRICE_DISPLAY_PRECISION', 2);
     }
 
     public function install($delete_params = true)
@@ -2585,8 +2597,8 @@ class GShoppingFlux extends Module
         $no_tax = (!$use_tax ? true : false);
         $product['price'] = (float) $p->getPriceStatic($product['id_product'], $use_tax, $combination) * $currency->conversion_rate;
         $product['price_without_reduct'] = (float) $p->getPriceWithoutReduct($no_tax, $combination) * $currency->conversion_rate;
-        $product['price'] = Tools::ps_round($product['price'], _PS_PRICE_DISPLAY_PRECISION_);
-        $product['price_without_reduct'] = Tools::ps_round($product['price_without_reduct'], _PS_PRICE_DISPLAY_PRECISION_);
+        $product['price'] = Tools::ps_round($product['price'], $this->getPriceDisplayPrecision());
+        $product['price_without_reduct'] = Tools::ps_round($product['price_without_reduct'], $this->getPriceDisplayPrecision());
         if ((float) $product['price'] < (float) $product['price_without_reduct']) {
             $xml_googleshopping .= '<g:price>' . $product['price_without_reduct'] . ' ' . $currency->iso_code . '</g:price>' . "\n";
             $xml_googleshopping .= '<g:sale_price>' . $product['price'] . ' ' . $currency->iso_code . '</g:sale_price>' . "\n";
@@ -2790,8 +2802,8 @@ class GShoppingFlux extends Module
         $no_tax = (!$use_tax ? true : false);
         $product['price'] = (float) $p->getPriceStatic($product['id_product'], $use_tax, $combination) * $currency->conversion_rate;
         $product['price_without_reduct'] = (float) $p->getPriceWithoutReduct($no_tax, $combination) * $currency->conversion_rate;
-        $product['price'] = Tools::ps_round($product['price'], _PS_PRICE_DISPLAY_PRECISION_);
-        $product['price_without_reduct'] = Tools::ps_round($product['price_without_reduct'], _PS_PRICE_DISPLAY_PRECISION_);
+        $product['price'] = Tools::ps_round($product['price'], $this->getPriceDisplayPrecision());
+        $product['price_without_reduct'] = Tools::ps_round($product['price_without_reduct'], $this->getPriceDisplayPrecision());
         if ((float) $product['price'] < (float) $product['price_without_reduct']) {
             $xml_googleshopping .= '<g:price>' . $product['price_without_reduct'] . ' ' . $currency->iso_code . '</g:price>' . "\n";
             $xml_googleshopping .= '<g:sale_price>' . $product['price'] . ' ' . $currency->iso_code . '</g:sale_price>' . "\n";
