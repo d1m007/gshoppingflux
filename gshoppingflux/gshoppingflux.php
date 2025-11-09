@@ -34,7 +34,7 @@ class GShoppingFlux extends Module
     {
         $this->name = 'gshoppingflux';
         $this->tab = 'smart_shopping';
-        $this->version = '1.7.4';
+        $this->version = '1.7.5';
         $this->author = 'Dim00z';
 
         $this->bootstrap = true;
@@ -45,16 +45,28 @@ class GShoppingFlux extends Module
         $this->description = $this->l('Export your products to Google Merchant Center, easily.');
 
         $this->need_instance = 0;
-        $this->ps_versions_compliancy = ['min' => '1.5.0.0', 'max' => _PS_VERSION_];
-        $this->uri = ToolsCore::getCurrentUrlProtocolPrefix() . $this->context->shop->domain_ssl . $this->context->shop->physical_uri;
+        $this->ps_versions_compliancy = ['min' => '1.5.0.0', 'max' => '9.99.99'];
+        $this->uri = Tools::getCurrentUrlProtocolPrefix() . $this->context->shop->domain_ssl . $this->context->shop->physical_uri;
         if (empty($this->context->shop->domain_ssl)) {
-            $this->uri = ToolsCore::getCurrentUrlProtocolPrefix() . $this->context->shop->domain . $this->context->shop->physical_uri;
+            $this->uri = Tools::getCurrentUrlProtocolPrefix() . $this->context->shop->domain . $this->context->shop->physical_uri;
         }
         $this->categories_values = [];
 
         $this->ps_stock_management = Configuration::get('PS_STOCK_MANAGEMENT');
         $this->ps_shipping_handling = (float) Configuration::get('PS_SHIPPING_HANDLING');
         $this->free_shipping = Configuration::getMultiple(['PS_SHIPPING_FREE_PRICE', 'PS_SHIPPING_FREE_WEIGHT']);
+    }
+
+    /**
+     * Get price display precision for PS9 compatibility
+     * @return int
+     */
+    private function getPriceDisplayPrecision()
+    {
+        if (defined('$this->getPriceDisplayPrecision()')) {
+            return $this->getPriceDisplayPrecision();
+        }
+        return (int) Configuration::get('PS_PRICE_DISPLAY_PRECISION', 2);
     }
 
     public function install($delete_params = true)
@@ -2368,7 +2380,7 @@ class GShoppingFlux extends Module
         }
 
         $sql .= ' GROUP BY `p`.`id_product`;';
-        $products = Db::getInstance()->ExecuteS($sql);
+        $products = Db::getInstance()->executeS($sql);
         $this->nb_total_products = 0;
         $this->nb_not_exported_products = 0;
         $this->nb_combinations = 0;
@@ -2491,7 +2503,7 @@ class GShoppingFlux extends Module
             LEFT JOIN ' . _DB_PREFIX_ . 'customer c ON pc.id_customer = c.id_customer
             WHERE pc.deleted = 0 AND pc.validate = 1';
 
-        $comments = Db::getInstance()->ExecuteS($sql);
+        $comments = Db::getInstance()->executeS($sql);
 
         foreach ($comments as $comment) {
             $p = new Product($comment['id_product'], false, null, $id_shop, $this->context);
@@ -2585,8 +2597,8 @@ class GShoppingFlux extends Module
         $no_tax = (!$use_tax ? true : false);
         $product['price'] = (float) $p->getPriceStatic($product['id_product'], $use_tax, $combination) * $currency->conversion_rate;
         $product['price_without_reduct'] = (float) $p->getPriceWithoutReduct($no_tax, $combination) * $currency->conversion_rate;
-        $product['price'] = Tools::ps_round($product['price'], _PS_PRICE_DISPLAY_PRECISION_);
-        $product['price_without_reduct'] = Tools::ps_round($product['price_without_reduct'], _PS_PRICE_DISPLAY_PRECISION_);
+        $product['price'] = Tools::ps_round($product['price'], $this->getPriceDisplayPrecision());
+        $product['price_without_reduct'] = Tools::ps_round($product['price_without_reduct'], $this->getPriceDisplayPrecision());
         if ((float) $product['price'] < (float) $product['price_without_reduct']) {
             $xml_googleshopping .= '<g:price>' . $product['price_without_reduct'] . ' ' . $currency->iso_code . '</g:price>' . "\n";
             $xml_googleshopping .= '<g:sale_price>' . $product['price'] . ' ' . $currency->iso_code . '</g:sale_price>' . "\n";
@@ -2612,7 +2624,7 @@ class GShoppingFlux extends Module
         $title_limit = 70;
         $description_limit = 4990;
         $languages = Language::getLanguages();
-        $tailleTabLang = sizeof($languages);
+        $tailleTabLang = count($languages);
         $this->context->language->id = $id_lang;
         $this->context->shop->id = $id_shop;
         $p = new Product($product['id_product'], true, $id_lang, $id_shop, $this->context);
@@ -2699,7 +2711,7 @@ class GShoppingFlux extends Module
         }
         $indexTabLang = 0;
         if ($tailleTabLang > 1) {
-            while (sizeof($images) < 1 && $indexTabLang < $tailleTabLang) {
+            while (count($images) < 1 && $indexTabLang < $tailleTabLang) {
                 if ($languages[$indexTabLang]['id_lang'] != $lang['id_lang']) {
                     $images = Image::getImages($languages[$indexTabLang]['id_lang'], $product['id_product']);
                 }
@@ -2790,8 +2802,8 @@ class GShoppingFlux extends Module
         $no_tax = (!$use_tax ? true : false);
         $product['price'] = (float) $p->getPriceStatic($product['id_product'], $use_tax, $combination) * $currency->conversion_rate;
         $product['price_without_reduct'] = (float) $p->getPriceWithoutReduct($no_tax, $combination) * $currency->conversion_rate;
-        $product['price'] = Tools::ps_round($product['price'], _PS_PRICE_DISPLAY_PRECISION_);
-        $product['price_without_reduct'] = Tools::ps_round($product['price_without_reduct'], _PS_PRICE_DISPLAY_PRECISION_);
+        $product['price'] = Tools::ps_round($product['price'], $this->getPriceDisplayPrecision());
+        $product['price_without_reduct'] = Tools::ps_round($product['price_without_reduct'], $this->getPriceDisplayPrecision());
         if ((float) $product['price'] < (float) $product['price_without_reduct']) {
             $xml_googleshopping .= '<g:price>' . $product['price_without_reduct'] . ' ' . $currency->iso_code . '</g:price>' . "\n";
             $xml_googleshopping .= '<g:sale_price>' . $product['price'] . ' ' . $currency->iso_code . '</g:sale_price>' . "\n";
