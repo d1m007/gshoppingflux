@@ -91,7 +91,7 @@ We use [SemVer](http://semver.org/) for versioning. For the versions available, 
 - **Casper Olsen** - *Current maintainer* - [casper-o](https://github.com/casper-o)
 - **Vincent Charpentier** - *PrestaShop 9 compatibility* - [zenzen279](https://github.com/zenzen279)
 
-See also the list of [contributors](https://github.com/dim00z/gshoppingflux/contributors) who participated in this project.
+See also the list of [contributors](https://github.com/d1m007/gshoppingflux/contributors) who participated in this project.
 
 ## Support
 
