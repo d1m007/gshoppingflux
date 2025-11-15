@@ -320,6 +320,14 @@ class GShoppingFlux extends Module
         }
     }
 
+    private function getArrayValue($key, $defaultValue = false) {
+         $array = Tools::getValue($key, $defaultValue);
+         return is_array($array) ? implode(';', $array) : '';
+    }
+    private function getValue($key, $defaultValue = false) {
+        return Tools::getValue($key, $defaultValue);
+    }
+
     public function getContent()
     {
         $id_lang = $this->context->language->id;
@@ -328,7 +336,7 @@ class GShoppingFlux extends Module
         $shop_id = $this->context->shop->id;
         $shop_group_id = Shop::getGroupFromShop($shop_id);
 
-        $gcategories = Tools::getValue('gcategory') ? array_filter(Tools::getValue('gcategory'), 'strlen') : [];
+        $gcategories = $this->getValue('gcategory') ? array_filter($this->getValue('gcategory'), 'strlen') : [];
         if (count($shops) > 1 && Shop::getContext() != 1) {
             $this->_html .= $this->getWarningMultishopHtml();
 
@@ -342,38 +350,38 @@ class GShoppingFlux extends Module
         if (Tools::isSubmit('submitFluxOptions')) {
             $errors_update_shops = [];
             $updated = true;
-            $product_type_lang = Tools::getValue('product_type');
+            $product_type_lang = $this->getValue('product_type');
             foreach ($languages as $k => $lang) {
                 $product_type[$lang['id_lang']] = $product_type_lang[$k];
             }
 
             $updated &= Configuration::updateValue('GS_PRODUCT_TYPE', $product_type, false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_DESCRIPTION', Tools::getValue('description'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_SHIPPING_MODE', Tools::getValue('shipping_mode'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_SHIPPING_PRICE', (float) Tools::getValue('shipping_price'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_SHIPPING_COUNTRY', Tools::getValue('shipping_country'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_SHIPPING_COUNTRIES', implode(';', Tools::getValue('shipping_countries')), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_CARRIERS_EXCLUDED', implode(';', Tools::getValue('carriers_excluded')), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_IMG_TYPE', Tools::getValue('img_type'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_MPN_TYPE', Tools::getValue('mpn_type'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_GENDER', Tools::getValue('gender'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_AGE_GROUP', Tools::getValue('age_group'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_ATTRIBUTES', Tools::getValue('export_attributes'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_COLOR', implode(';', Tools::getValue('color')), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_MATERIAL', implode(';', Tools::getValue('material')), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_PATTERN', implode(';', Tools::getValue('pattern')), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_SIZE', implode(';', Tools::getValue('size')), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_EXPORT_MIN_PRICE', (float) Tools::getValue('export_min_price'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_NO_GTIN', (bool) Tools::getValue('no_gtin'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_SHIPPING_DIMENSION', (bool) Tools::getValue('shipping_dimension'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_NO_BRAND', (bool) Tools::getValue('no_brand'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_ID_EXISTS_TAG', (bool) Tools::getValue('id_exists_tag'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_EXPORT_NAP', (bool) Tools::getValue('export_nap'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_QUANTITY', (bool) Tools::getValue('quantity'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_FEATURED_PRODUCTS', (bool) Tools::getValue('featured_products'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_GEN_FILE_IN_ROOT', (bool) Tools::getValue('gen_file_in_root'), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_FILE_PREFIX', trim(Tools::getValue('file_prefix')), false, (int) $shop_group_id, (int) $shop_id);
-            $updated &= Configuration::updateValue('GS_AUTOEXPORT_ON_SAVE', (bool) Tools::getValue('autoexport_on_save'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_DESCRIPTION', $this->getValue('description'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_SHIPPING_MODE', $this->getValue('shipping_mode'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_SHIPPING_PRICE', (float) $this->getValue('shipping_price'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_SHIPPING_COUNTRY', $this->getValue('shipping_country'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_SHIPPING_COUNTRIES', $this->getArrayValue('shipping_countries'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_CARRIERS_EXCLUDED', $this->getArrayValue('carriers_excluded'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_IMG_TYPE', $this->getValue('img_type'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_MPN_TYPE', $this->getValue('mpn_type'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_GENDER', $this->getValue('gender'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_AGE_GROUP', $this->getValue('age_group'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_ATTRIBUTES', $this->getValue('export_attributes'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_COLOR', $this->getArrayValue('color'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_MATERIAL', $this->getArrayValue('material'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_PATTERN', $this->getArrayValue('pattern'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_SIZE', $this->getArrayValue('size'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_EXPORT_MIN_PRICE', (float) $this->getValue('export_min_price'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_NO_GTIN', (bool) $this->getValue('no_gtin'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_SHIPPING_DIMENSION', (bool) $this->getValue('shipping_dimension'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_NO_BRAND', (bool) $this->getValue('no_brand'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_ID_EXISTS_TAG', (bool) $this->getValue('id_exists_tag'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_EXPORT_NAP', (bool) $this->getValue('export_nap'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_QUANTITY', (bool) $this->getValue('quantity'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_FEATURED_PRODUCTS', (bool) $this->getValue('featured_products'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_GEN_FILE_IN_ROOT', (bool) $this->getValue('gen_file_in_root'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_FILE_PREFIX', trim($this->getValue('file_prefix')), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_AUTOEXPORT_ON_SAVE', (bool) $this->getValue('autoexport_on_save'), false, (int) $shop_group_id, (int) $shop_id);
 
             if (!$updated) {
                 $shop = new Shop($shop_id);
@@ -389,7 +397,7 @@ class GShoppingFlux extends Module
         } elseif (Tools::isSubmit('submitLocalInventoryFluxOptions')) {
             $errors_update_shops = [];
             $updated = true;
-            $updated &= Configuration::updateValue('GS_LOCAL_SHOP_CODE', Tools::getValue('store_code'), false, (int) $shop_group_id, (int) $shop_id);
+            $updated &= Configuration::updateValue('GS_LOCAL_SHOP_CODE', $this->getValue('store_code'), false, (int) $shop_group_id, (int) $shop_id);
             if (!$updated) {
                 $shop = new Shop($shop_id);
                 $errors_update_shops[] = $shop->name;
@@ -405,22 +413,22 @@ class GShoppingFlux extends Module
             $this->confirm = $this->l('The settings have been updated.');
             $this->generateXMLFiles(0, $shop_id, $shop_group_id, false, true);
         } elseif (Tools::isSubmit('updateCategory')) {
-            $id_gcategory = (int) Tools::getValue('id_gcategory', 0);
-            $export = (int) Tools::getValue('export', 0);
-            $condition = Tools::getValue('condition');
-            $availability = Tools::getValue('availability');
-            $gender = Tools::getValue('gender');
-            $age_group = Tools::getValue('age_group');
-            $color = implode(';', Tools::getValue('color'));
-            $material = implode(';', Tools::getValue('material'));
-            $pattern = implode(';', Tools::getValue('pattern'));
-            $size = implode(';', Tools::getValue('size'));
+            $id_gcategory = (int) $this->getValue('id_gcategory', 0);
+            $export = (int) $this->getValue('export', 0);
+            $condition = $this->getValue('condition');
+            $availability = $this->getValue('availability');
+            $gender = $this->getValue('gender');
+            $age_group = $this->getValue('age_group');
+            $color = implode(';', $this->getValue('color'));
+            $material = implode(';', $this->getValue('material'));
+            $pattern = implode(';', $this->getValue('pattern'));
+            $size = implode(';', $this->getValue('size'));
             $id_shop = (int) Shop::getContextShopID();
 
             if (Tools::isSubmit('updatecateg')) {
                 $gcateg = [];
                 foreach (Language::getLanguages(false) as $lang) {
-                    $gcateg[$lang['id_lang']] = Tools::getValue('gcategory_' . (int) $lang['id_lang']);
+                    $gcateg[$lang['id_lang']] = $this->getValue('gcategory_' . (int) $lang['id_lang']);
                 }
 
                 GCategories::update($id_gcategory, $gcateg, $export, $condition, $availability, $gender, $age_group, $color, $material, $pattern, $size, $id_shop);
@@ -430,13 +438,13 @@ class GShoppingFlux extends Module
                 $this->generateXMLFiles(0, $shop_id, $shop_group_id);
             }
         } elseif (Tools::isSubmit('updateLanguage')) {
-            $id_glang = (int) Tools::getValue('id_glang', 0);
-            $currencies = implode(';', Tools::getValue('currencies'));
-            $tax_included = (int) Tools::getValue('tax_included', 0);
-            $export = (int) Tools::getValue('active', 0);
+            $id_glang = (int) $this->getValue('id_glang', 0);
+            $currencies = $this->getArrayValue('currencies');
+            $tax_included = (int) $this->getValue('tax_included', 0);
+            $export = (int) $this->getValue('active', 0);
             if (Tools::isSubmit('updatelang')) {
                 GLangAndCurrency::update($id_glang, $currencies, $tax_included, (int) Shop::getContextShopID());
-                if (count(Tools::getValue('currencies')) > 1) {
+                if (count($this->getValue('currencies')) > 1) {
                     $this->confirm = $this->l('Selected currencies for this language have been saved.');
                 } else {
                     $this->confirm = $this->l('Selected currency for this language has been saved.');
@@ -454,10 +462,10 @@ class GShoppingFlux extends Module
             return $this->_html;
         }
 
-        if ((Tools::getIsset('updategshoppingflux') || Tools::getIsset('statusgshoppingflux')) && !Tools::getValue('updategshoppingflux')) {
+        if ((Tools::getIsset('updategshoppingflux') || Tools::getIsset('statusgshoppingflux')) && !$this->getValue('updategshoppingflux')) {
             $this->_html .= $this->renderCategForm();
             $this->_html .= $this->renderCategList();
-        } elseif ((Tools::getIsset('updategshoppingflux_lc') || Tools::getIsset('statusgshoppingflux_lc')) && !Tools::getValue('updategshoppingflux_lc')) {
+        } elseif ((Tools::getIsset('updategshoppingflux_lc') || Tools::getIsset('statusgshoppingflux_lc')) && !$this->getValue('updategshoppingflux_lc')) {
             $this->_html .= $this->renderLangForm();
             $this->_html .= $this->renderLangList();
         } else {
@@ -1353,7 +1361,7 @@ class GShoppingFlux extends Module
         $fields_form = [
             'form' => [
                 'legend' => [
-                    'title' => ((Tools::getIsset('updategshoppingflux') || Tools::getIsset('statusgshoppingflux')) && !Tools::getValue('updategshoppingflux')) ? $this->l('Update the matching Google category') : $this->l('Add a new Google category'),
+                    'title' => ((Tools::getIsset('updategshoppingflux') || Tools::getIsset('statusgshoppingflux')) && !$this->getValue('updategshoppingflux')) ? $this->l('Update the matching Google category') : $this->l('Add a new Google category'),
                     'icon' => 'icon-link',
                 ],
                 'input' => [
@@ -1491,7 +1499,7 @@ class GShoppingFlux extends Module
             ],
         ];
 
-        if ((Tools::getIsset('updategshoppingflux') || Tools::getIsset('statusgshoppingflux')) && !Tools::getValue('updategshoppingflux')) {
+        if ((Tools::getIsset('updategshoppingflux') || Tools::getIsset('statusgshoppingflux')) && !$this->getValue('updategshoppingflux')) {
             $fields_form['form']['submit'] = [
                 'name' => 'updateCategory',
                 'title' => $this->l('Update'),
@@ -1533,7 +1541,7 @@ class GShoppingFlux extends Module
 
         if (Tools::isSubmit('updategshoppingflux') || Tools::isSubmit('statusgshoppingflux')) {
             $id_lang = $this->context->cookie->id_lang;
-            $gcateg = GCategories::getCategLang(Tools::getValue('id_gcategory'), (int) Shop::getContextShopID(), $id_lang);
+            $gcateg = GCategories::getCategLang($this->getValue('id_gcategory'), (int) Shop::getContextShopID(), $id_lang);
 
             foreach ($gcateg['gcategory'] as $key => $categ) {
                 $gcateg['gcategory'][$key] = Tools::htmlentitiesDecodeUTF8($categ);
@@ -1553,26 +1561,26 @@ class GShoppingFlux extends Module
         }
 
         $fields_values = [
-            'id_gcategory' => Tools::getValue('id_gcategory'),
+            'id_gcategory' => $this->getValue('id_gcategory'),
             'breadcrumb' => (isset($gcatlabel_edit) ? $gcatlabel_edit : ''),
-            'export' => Tools::getValue('export', isset($gcatexport_active) ? $gcatexport_active : ''),
-            'condition' => Tools::getValue('condition', isset($gcatcondition_edit) ? $gcatcondition_edit : ''),
-            'availability' => Tools::getValue('availability', isset($gcatavail_edit) ? $gcatavail_edit : ''),
-            'gender' => Tools::getValue('gender', isset($gcatgender_edit) ? $gcatgender_edit : ''),
-            'age_group' => Tools::getValue('age_group', isset($gcatage_edit) ? $gcatage_edit : ''),
-            'color[]' => explode(';', Tools::getValue('color[]', isset($gcatcolor_edit) ? $gcatcolor_edit : '')),
-            'material[]' => explode(';', Tools::getValue('material[]', isset($gcatmaterial_edit) ? $gcatmaterial_edit : '')),
-            'pattern[]' => explode(';', Tools::getValue('pattern[]', isset($gcatpattern_edit) ? $gcatpattern_edit : '')),
-            'size[]' => explode(';', Tools::getValue('size[]', isset($gcatsize_edit) ? $gcatsize_edit : '')),
+            'export' => $this->getValue('export', isset($gcatexport_active) ? $gcatexport_active : ''),
+            'condition' => $this->getValue('condition', isset($gcatcondition_edit) ? $gcatcondition_edit : ''),
+            'availability' => $this->getValue('availability', isset($gcatavail_edit) ? $gcatavail_edit : ''),
+            'gender' => $this->getValue('gender', isset($gcatgender_edit) ? $gcatgender_edit : ''),
+            'age_group' => $this->getValue('age_group', isset($gcatage_edit) ? $gcatage_edit : ''),
+            'color[]' => explode(';', $this->getValue('color[]', isset($gcatcolor_edit) ? $gcatcolor_edit : '')),
+            'material[]' => explode(';', $this->getValue('material[]', isset($gcatmaterial_edit) ? $gcatmaterial_edit : '')),
+            'pattern[]' => explode(';', $this->getValue('pattern[]', isset($gcatpattern_edit) ? $gcatpattern_edit : '')),
+            'size[]' => explode(';', $this->getValue('size[]', isset($gcatsize_edit) ? $gcatsize_edit : '')),
         ];
 
-        if (Tools::getValue('submitAddmodule')) {
+        if ($this->getValue('submitAddmodule')) {
             foreach (Language::getLanguages(false) as $lang) {
                 $fields_values['gcategory'][$lang['id_lang']] = '';
             }
         } else {
             foreach (Language::getLanguages(false) as $lang) {
-                $fields_values['gcategory'][$lang['id_lang']] = Tools::getValue('gcategory_' . (int) $lang['id_lang'], isset($gcategory_edit[$lang['id_lang']]) ? html_entity_decode($gcategory_edit[$lang['id_lang']]) : '');
+                $fields_values['gcategory'][$lang['id_lang']] = $this->getValue('gcategory_' . (int) $lang['id_lang'], isset($gcategory_edit[$lang['id_lang']]) ? html_entity_decode($gcategory_edit[$lang['id_lang']]) : '');
             }
         }
 
@@ -1585,20 +1593,20 @@ class GShoppingFlux extends Module
         $glangexport_active = '';
 
         if (Tools::isSubmit('updategshoppingflux_lc') || Tools::isSubmit('statusgshoppingflux_lc')) {
-            $glang = GLangAndCurrency::getLangCurrencies(Tools::getValue('id_glang'), (int) Shop::getContextShopID());
+            $glang = GLangAndCurrency::getLangCurrencies($this->getValue('id_glang'), (int) Shop::getContextShopID());
             $glangcurrency_edit = explode(';', $glang[0]['id_currency']);
             $glangtax_included = $glang[0]['tax_included'];
             $glangexport_active = $glang[0]['active'];
         }
-        $language = Language::getLanguage(Tools::getValue('id_glang'));
+        $language = Language::getLanguage($this->getValue('id_glang'));
         $fields_values = [
-            'id_glang' => Tools::getValue('id_glang'),
+            'id_glang' => $this->getValue('id_glang'),
             'name' => $language['name'],
             'iso_code' => $language['iso_code'],
             'language_code' => $language['language_code'],
-            'currencies[]' => Tools::getValue('currencies[]', $glangcurrency_edit),
-            'tax_included' => Tools::getValue('tax_included', $glangtax_included),
-            'active' => Tools::getValue('active', $glangexport_active),
+            'currencies[]' => $this->getValue('currencies[]', $glangcurrency_edit),
+            'tax_included' => $this->getValue('tax_included', $glangtax_included),
+            'active' => $this->getValue('active', $glangexport_active),
         ];
 
         return $fields_values;
@@ -1703,7 +1711,7 @@ class GShoppingFlux extends Module
             ],
         ];
 
-        if ((Tools::getIsset('updategshoppingflux_lc') || Tools::getIsset('statusgshoppingflux_lc')) && !Tools::getValue('updategshoppingflux_lc')) {
+        if ((Tools::getIsset('updategshoppingflux_lc') || Tools::getIsset('statusgshoppingflux_lc')) && !$this->getValue('updategshoppingflux_lc')) {
             $fields_form['form']['submit'] = [
                 'name' => 'updateLanguage',
                 'title' => $this->l('Update'),

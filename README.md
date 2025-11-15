@@ -87,16 +87,15 @@ We use [SemVer](http://semver.org/) for versioning. For the versions available, 
 ## Authors
 
 - **Jordi Martin** - *Initial work* - [jmartin82](https://github.com/jmartin82)
-- **d1m007** - *Continue working* - [d1m007](https://github.com/d1m007)
-- **Casper Olsen** - *Current maintainer* - [casper-o](https://github.com/casper-o)
-- **Vincent Charpentier** - *PrestaShop 9 compatibility* - [zenzen279](https://github.com/zenzen279)
+- **d1m007** - *A lot of improvements* - [d1m007](https://github.com/d1m007)
+- **Casper Olsen** - *A lot of improvements* - [casper-o](https://github.com/casper-o)
+- **Vincent Charpentier** - *Current maintainer* - [zenzen279](https://github.com/zenzen279)
 
 See also the list of [contributors](https://github.com/d1m007/gshoppingflux/contributors) who participated in this project.
 
 ## Support
 
-- 📖 [Google Shopping Feed Specification](http://support.google.com/merchants/answer/188494)
-- 💬 [PrestaShop Forum Thread](https://www.prestashop.com/forums/topic/661366-free-module-google-shopping-flux/)
+- 📖 [Google Shopping Feed Specification](https://support.google.com/merchants/answer/7052112)
 - 🐛 [Issue Tracker](https://github.com/dim00z/gshoppingflux/issues)
 
 ## License
