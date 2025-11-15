@@ -54,6 +54,13 @@ Depending on your store and what you want to send to google, you would need to c
 
 ## Changelog
 
+### Version 1.7.6 (2025)
+
+- Add comments everywhere
+- Reorganize code files
+- Small improvements
+- Safe implode to fix implode errors on non array value got from Tools
+
 ### Version 1.7.5 (2025)
 
 - ✨ **PrestaShop 9.0.1 compatibility**
@@ -82,7 +89,7 @@ You are welcome to help making this module better.
 
 ## Versioning
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/dim00z/gshoppingflux/tags). 
+We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/dim00z/gshoppingflux/tags).
 
 ## Authors
 
