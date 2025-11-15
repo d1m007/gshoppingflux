@@ -2622,6 +2622,7 @@ class GShoppingFlux extends Module
         $xml_googleshopping = '';
         $id_lang = (int) $lang['id_lang'];
         $title_limit = 70;
+        $short_title_limit = 65;
         $description_limit = 4990;
         $languages = Language::getLanguages();
         $tailleTabLang = count($languages);
@@ -2654,6 +2655,7 @@ class GShoppingFlux extends Module
 
         // Product name
         $title_crop = $product['name'];
+        $short_title_crop = $product['name'];
 
         //  Product color attribute, if any
         if (!empty($product['color'])) {
@@ -2672,6 +2674,11 @@ class GShoppingFlux extends Module
         if (Tools::strlen($product['name']) > $title_limit) {
             $title_crop = Tools::substr($title_crop, 0, $title_limit - 1);
             $title_crop = Tools::substr($title_crop, 0, strrpos($title_crop, ' '));
+        }
+
+        if (Tools::strlen($short_title_crop) > $short_title_limit) {
+            $short_title_crop = Tools::substr($short_title_crop, 0, $short_title_limit - 1);
+            $short_title_crop = Tools::substr($short_title_crop, 0, strrpos($short_title_crop, ' '));
         }
 
         // Description type
@@ -2701,6 +2708,7 @@ class GShoppingFlux extends Module
         $xml_googleshopping .= '<item>' . "\n";
         $xml_googleshopping .= '<g:id>' . $product['gid'] . '</g:id>' . "\n";
         $xml_googleshopping .= '<g:title><![CDATA[' . $title_crop . ']]></g:title>' . "\n";
+        $xml_googleshopping .= '<g:short_title><![CDATA[' . $short_title_crop . ']]></g:short_title>' . "\n";
         $xml_googleshopping .= '<g:description><![CDATA[' . $description_crop . ']]></g:description>' . "\n";
         $xml_googleshopping .= '<g:link><![CDATA[' . $this->linkencode($product_link) . ']]></g:link>' . "\n";
 
