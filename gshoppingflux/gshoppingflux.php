@@ -909,6 +909,8 @@ class GShoppingFlux extends Module
         } elseif (empty($components['host'])) {
             $components['host'] = '';
             $components['port'] = '';
+        } elseif (empty($components['port'])) {
+            $components['port'] = '';
         }
 
         // Handle path encoding
