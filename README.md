@@ -54,6 +54,13 @@ Depending on your store and what you want to send to google, you would need to c
 
 ## Changelog
 
+### Version 1.7.6 (2025)
+
+- Add comments everywhere
+- Reorganize code files
+- Small improvements
+- Safe implode to fix implode errors on non array value got from Tools
+
 ### Version 1.7.5 (2025)
 
 - ✨ **PrestaShop 9.0.1 compatibility**
@@ -82,21 +89,20 @@ You are welcome to help making this module better.
 
 ## Versioning
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/dim00z/gshoppingflux/tags). 
+We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/dim00z/gshoppingflux/tags).
 
 ## Authors
 
 - **Jordi Martin** - *Initial work* - [jmartin82](https://github.com/jmartin82)
-- **d1m007** - *Continue working* - [d1m007](https://github.com/d1m007)
-- **Casper Olsen** - *Current maintainer* - [casper-o](https://github.com/casper-o)
-- **Vincent Charpentier** - *PrestaShop 9 compatibility* - [zenzen279](https://github.com/zenzen279)
+- **d1m007** - *A lot of improvements* - [d1m007](https://github.com/d1m007)
+- **Casper Olsen** - *A lot of improvements* - [casper-o](https://github.com/casper-o)
+- **Vincent Charpentier** - *Current maintainer* - [zenzen279](https://github.com/zenzen279)
 
 See also the list of [contributors](https://github.com/d1m007/gshoppingflux/contributors) who participated in this project.
 
 ## Support
 
-- 📖 [Google Shopping Feed Specification](http://support.google.com/merchants/answer/188494)
-- 💬 [PrestaShop Forum Thread](https://www.prestashop.com/forums/topic/661366-free-module-google-shopping-flux/)
+- 📖 [Google Shopping Feed Specification](https://support.google.com/merchants/answer/7052112)
 - 🐛 [Issue Tracker](https://github.com/dim00z/gshoppingflux/issues)
 
 ## License
