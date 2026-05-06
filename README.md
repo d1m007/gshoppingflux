@@ -54,6 +54,15 @@ Depending on your store and what you want to send to google, you would need to c
 
 ## Changelog
 
+### Version 1.7.7 (2025) : Add new fields
+
+- Increase title length (150) (thank you @eballetbaz)
+- Add short_title (thank you @eballetbaz)
+- Add availability date for preorders
+- Add buying price (wholesale price) as "cost of goods sold"
+- Add Size type : regular, petite, maternity, big, tall, plus
+- Add Size system : US, UK, UE, DE, FR, JP, CN, IT, BR, MEX, AU
+
 ### Version 1.7.6 (2025)
 
 - Add comments everywhere

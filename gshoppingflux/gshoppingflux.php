@@ -9,7 +9,7 @@
  * @package GShoppingFlux
  * @copyright 2014-2025 Google Shopping Flux Contributors
  * @license Apache License 2.0
- * @version 1.7.6
+ * @version 1.7.7
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -102,7 +102,7 @@ class GShoppingFlux extends Module
     {
         $this->name = 'gshoppingflux';
         $this->tab = 'smart_shopping';
-        $this->version = '1.7.6';
+        $this->version = '1.7.7';
         $this->author = 'Dim00z';
         $this->bootstrap = true;
 
@@ -214,6 +214,8 @@ class GShoppingFlux extends Module
             'GS_MATERIAL' => '',
             'GS_PATTERN' => '',
             'GS_SIZE' => '',
+            'GS_SIZE_TYPE' => '',
+            'GS_SIZE_SYSTEM' => '',
             'GS_EXPORT_MIN_PRICE' => '0.00',
             'GS_NO_GTIN' => '1',
             'GS_SHIPPING_DIMENSION' => '1',
@@ -261,6 +263,8 @@ class GShoppingFlux extends Module
 				`material` VARCHAR( 64 ) NOT NULL,
 				`pattern` VARCHAR( 64 ) NOT NULL,
 				`size` VARCHAR( 64 ) NOT NULL,
+                `size_type` VARCHAR( 64 ) NOT NULL,
+                `size_system` VARCHAR( 64 ) NOT NULL,
 				`id_shop` INT(11) UNSIGNED NOT NULL,
 		  	INDEX (`id_gcategory`, `id_shop`)
 		  	) ENGINE = ' . _MYSQL_ENGINE_ . ' CHARACTER SET utf8 COLLATE utf8_general_ci;');
@@ -331,6 +335,8 @@ class GShoppingFlux extends Module
             $material = '';
             $pattern = '';
             $size = '';
+            $size_type = '';
+            $size_system = '';
 
             // Check if category already exists
             $cat_exists = GCategories::get($cat['id_category'], $id_lang, $id_shop);
@@ -347,7 +353,7 @@ class GShoppingFlux extends Module
                 }
 
                 // Add category mapping
-                GCategories::add($cat['id_category'], $category_names, $cat['active'], $condition, $availability, $gender, $age_group, $color, $material, $pattern, $size, $id_shop);
+                GCategories::add($cat['id_category'], $category_names, $cat['active'], $condition, $availability, $gender, $age_group, $color, $material, $pattern, $size, $size_type, $size_system, $id_shop);
             }
         }
 
@@ -396,6 +402,8 @@ class GShoppingFlux extends Module
                 'GS_MATERIAL',
                 'GS_PATTERN',
                 'GS_SIZE',
+                'GS_SIZE_TYPE',
+                'GS_SIZE_SYSTEM',
                 'GS_EXPORT_MIN_PRICE',
                 'GS_NO_GTIN',
                 'GS_SHIPPING_DIMENSION',
@@ -524,6 +532,8 @@ class GShoppingFlux extends Module
                 'material' => $category['material'],
                 'pattern' => $category['pattern'],
                 'size' => $category['size'],
+                'size_type' => $category['size_type'],
+                'size_system' => $category['size_system'],
                 'id_shop' => $new_shop_id,
             ]);
 
@@ -706,6 +716,8 @@ class GShoppingFlux extends Module
         $updated &= Configuration::updateValue('GS_MATERIAL', ArrayHelper::safeImplode('material'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_PATTERN', ArrayHelper::safeImplode('pattern'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_SIZE', ArrayHelper::safeImplode('size'), false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_SIZE_TYPE', ArrayHelper::safeImplode('size_type'), false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_SIZE_SYSTEM', ArrayHelper::safeImplode('size_system'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_EXPORT_MIN_PRICE', (float) Tools::getValue('export_min_price'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_NO_GTIN', (bool) Tools::getValue('no_gtin'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_SHIPPING_DIMENSION', (bool) Tools::getValue('shipping_dimension'), false, (int) $shop_group_id, (int) $shop_id);
@@ -768,6 +780,8 @@ class GShoppingFlux extends Module
         $material = ArrayHelper::safeImplode((array) Tools::getValue('material'));
         $pattern = ArrayHelper::safeImplode((array) Tools::getValue('pattern'));
         $size = ArrayHelper::safeImplode((array) Tools::getValue('size'));
+        $size_type = ArrayHelper::safeImplode((array) Tools::getValue('size_type'));
+        $size_system = ArrayHelper::safeImplode((array) Tools::getValue('size_system'));
 
         if (Tools::isSubmit('updatecateg')) {
             $gcateg = [];
@@ -775,7 +789,7 @@ class GShoppingFlux extends Module
                 $gcateg[$lang['id_lang']] = Tools::getValue('gcategory_' . (int) $lang['id_lang']);
             }
 
-            GCategories::update($id_gcategory, $gcateg, $export, $condition, $availability, $gender, $age_group, $color, $material, $pattern, $size, $shop_id);
+            GCategories::update($id_gcategory, $gcateg, $export, $condition, $availability, $gender, $age_group, $color, $material, $pattern, $size, $size_type, $size_system, $shop_id);
             $this->confirm = $this->l('Google category has been updated.');
         }
 
@@ -1398,6 +1412,34 @@ class GShoppingFlux extends Module
                         ],
                         'desc' => $this->l('Hold [Ctrl] key pressed to select multiple size features.'),
                     ],
+                    // Size type feature multi-selector
+                    [
+                        'type' => 'select',
+                        'multiple' => true,
+                        'label' => $this->l('Products size type feature'),
+                        'name' => 'size_type[]',
+                        'default_value' => $helper->tpl_vars['fields_value']['size_type[]'],
+                        'options' => [
+                            'query' => $features,
+                            'id' => 'id_feature',
+                            'name' => 'name',
+                        ],
+                        'desc' => $this->l('Hold [Ctrl] key pressed to select multiple size type features.'),
+                    ],
+                    // Size system feature multi-selector
+                    [
+                        'type' => 'select',
+                        'multiple' => true,
+                        'label' => $this->l('Products size system feature'),
+                        'name' => 'size_system[]',
+                        'default_value' => $helper->tpl_vars['fields_value']['size_system[]'],
+                        'options' => [
+                            'query' => $features,
+                            'id' => 'id_feature',
+                            'name' => 'name',
+                        ],
+                        'desc' => $this->l('Hold [Ctrl] key pressed to select multiple size system features.'),
+                    ],
                     // Export attributes toggle
                     [
                         'type' => 'switch',
@@ -1744,6 +1786,8 @@ class GShoppingFlux extends Module
         $material = [];
         $pattern = [];
         $size = [];
+        $size_type = [];
+        $size_system = [];
         $export_min_price = 0;
         $no_gtin = true;
         $shipping_dimension = true;
@@ -1778,6 +1822,8 @@ class GShoppingFlux extends Module
         $material = ArrayHelper::explodeAndFilter(Configuration::get('GS_MATERIAL', 0, $shop_group_id, $shop_id));
         $pattern = ArrayHelper::explodeAndFilter(Configuration::get('GS_PATTERN', 0, $shop_group_id, $shop_id));
         $size = ArrayHelper::explodeAndFilter(Configuration::get('GS_SIZE', 0, $shop_group_id, $shop_id));
+        $size_type = ArrayHelper::explodeAndFilter(Configuration::get('GS_SIZE_TYPE', 0, $shop_group_id, $shop_id));
+        $size_system = ArrayHelper::explodeAndFilter(Configuration::get('GS_SIZE_SYSTEM', 0, $shop_group_id, $shop_id));
         $export_min_price = (float) Configuration::get('GS_EXPORT_MIN_PRICE', 0, $shop_group_id, $shop_id);
         $no_gtin &= (bool) Configuration::get('GS_NO_GTIN', 0, $shop_group_id, $shop_id);
         $shipping_dimension &= (bool) Configuration::get('GS_SHIPPING_DIMENSION', 0, $shop_group_id, $shop_id);
@@ -1809,6 +1855,8 @@ class GShoppingFlux extends Module
             'material[]' => $material,
             'pattern[]' => $pattern,
             'size[]' => $size,
+            'size_type[]' => $size_type,
+            'size_system[]' => $size_system,
             'export_min_price' => (float) $export_min_price,
             'no_gtin' => (int) $no_gtin,
             'shipping_dimension' => (int) $shipping_dimension,
@@ -2113,6 +2161,34 @@ class GShoppingFlux extends Module
                         ],
                         'desc' => $this->l('Hold [Ctrl] key pressed to select multiple size attributes.'),
                     ],
+                    // Size type attribute multi-selector
+                    [
+                        'type' => 'select',
+                        'multiple' => true,
+                        'label' => $this->l('Products size type attribute'),
+                        'name' => 'size_type[]',
+                        'default_value' => $helper->fields_value['size_type[]'],
+                        'options' => [
+                            'query' => $attributes,
+                            'id' => 'id_attribute_group',
+                            'name' => 'name',
+                        ],
+                        'desc' => $this->l('Hold [Ctrl] key pressed to select multiple size type attributes.'),
+                    ],
+                    // Size system attribute multi-selector
+                    [
+                        'type' => 'select',
+                        'multiple' => true,
+                        'label' => $this->l('Products size system attribute'),
+                        'name' => 'size_system[]',
+                        'default_value' => $helper->fields_value['size_system[]'],
+                        'options' => [
+                            'query' => $attributes,
+                            'id' => 'id_attribute_group',
+                            'name' => 'name',
+                        ],
+                        'desc' => $this->l('Hold [Ctrl] key pressed to select multiple size system attributes.'),
+                    ],
                 ],
                 'description' => $form_desc,
                 'submit' => [
@@ -2165,6 +2241,8 @@ class GShoppingFlux extends Module
         $gcatmaterial_edit = '';
         $gcatpattern_edit = '';
         $gcatsize_edit = '';
+        $gcatsizetype_edit = '';
+        $gcatsizesystem_edit = '';
         $gcategory_edit = '';
         $gcatlabel_edit = '';
 
@@ -2188,6 +2266,8 @@ class GShoppingFlux extends Module
             $gcatmaterial_edit = $gcateg['material'];
             $gcatpattern_edit = $gcateg['pattern'];
             $gcatsize_edit = $gcateg['size'];
+            $gcatsizetype_edit = $gcateg['size_type'];
+            $gcatsizesystem_edit = $gcateg['size_system'];
             $gcategory_edit = $gcateg['gcategory'];
             $gcatlabel_edit = $gcateg['breadcrumb'];
         }
@@ -2205,6 +2285,8 @@ class GShoppingFlux extends Module
             'material[]' => ArrayHelper::explodeAndFilter(ArrayHelper::getValue('material[]', isset($gcatmaterial_edit) ? $gcatmaterial_edit : '')),
             'pattern[]' => ArrayHelper::explodeAndFilter(ArrayHelper::getValue('pattern[]', isset($gcatpattern_edit) ? $gcatpattern_edit : '')),
             'size[]' => ArrayHelper::explodeAndFilter(ArrayHelper::getValue('size[]', isset($gcatsize_edit) ? $gcatsize_edit : '')),
+            'size_type[]' => ArrayHelper::explodeAndFilter(ArrayHelper::getValue('size_type[]', isset($gcatsizetype_edit) ? $gcatsizetype_edit : '')),
+            'size_system[]' => ArrayHelper::explodeAndFilter(ArrayHelper::getValue('size_system[]', isset($gcatsizesystem_edit) ? $gcatsizesystem_edit : '')),
         ];
 
         // Initialize Google category names for all languages
@@ -2497,7 +2579,7 @@ class GShoppingFlux extends Module
      *
      * Generates tree-view list table of all categories with Google Shopping mappings.
      * Displays category hierarchy, Google category names, condition, availability,
-     * and attribute mappings (gender, age_group, color, material, pattern, size).
+     * and attribute mappings (gender, age_group, color, material, pattern, size, size type, size system).
      * Shows export status for each category.
      *
      * @return string Generated HTML list table using HelperList
@@ -2553,6 +2635,12 @@ class GShoppingFlux extends Module
             ],
             'gid_sizes' => [
                 'title' => $this->l('Size'),
+            ],
+            'gid_size_types' => [
+                'title' => $this->l('Size type'),
+            ],
+            'gid_size_systems' => [
+                'title' => $this->l('Size system'),
             ],
             'export' => [
                 'title' => $this->l('Export'),
@@ -2743,6 +2831,8 @@ class GShoppingFlux extends Module
                 $gid_materials = [];
                 $gid_patterns = [];
                 $gid_sizes = [];
+                $gid_sizetypes = [];
+                $gid_sizesystems = [];
 
                 if ($result[$k]['level_depth'] > 0) {
                     $tree = ' > ';
@@ -2782,10 +2872,26 @@ class GShoppingFlux extends Module
                         }
                     }
 
+                    $result[$k]['size_type'] = explode(';', $result[$k]['size_type']);
+                    foreach ($result[$k]['size_type'] as $a => $v) {
+                        if (in_array($v, $attribute_ids)) {
+                            $gid_sizetypes[] = $attributes[$key]['name'];
+                        }
+                    }
+
+                    $result[$k]['size_system'] = explode(';', $result[$k]['size_system']);
+                    foreach ($result[$k]['size_system'] as $a => $v) {
+                        if (in_array($v, $attribute_ids)) {
+                            $gid_sizesystems[] = $attributes[$key]['name'];
+                        }
+                    }
+
                     $result[$k]['gid_colors'] = implode(' ; ', $gid_colors);
                     $result[$k]['gid_materials'] = implode(' ; ', $gid_materials);
                     $result[$k]['gid_patterns'] = implode(' ; ', $gid_patterns);
                     $result[$k]['gid_sizes'] = implode(' ; ', $gid_sizes);
+                    $result[$k]['gid_sizetypes'] = implode(' ; ', $gid_sizetypes);
+                    $result[$k]['gid_sizesystems'] = implode(' ; ', $gid_sizesystems);
                 }
             }
 
@@ -2895,8 +3001,10 @@ class GShoppingFlux extends Module
             $material = $cat['material'];
             $pattern = $cat['pattern'];
             $size = $cat['size'];
+            $size_type = $cat['size_type'];
+            $size_system = $cat['size_system'];
 
-            while ((empty($gcategory) || empty($condition) || empty($availability) || empty($gender) || empty($age_group) || empty($color) || empty($material) || empty($pattern) || empty($size)) && $parent_id >= $root->id_category) {
+            while ((empty($gcategory) || empty($condition) || empty($availability) || empty($gender) || empty($age_group) || empty($color) || empty($material) || empty($pattern) || empty($size) || empty($size_type) || empty($size_system)) && $parent_id >= $root->id_category) {
                 $parentsql = $sql . ' AND k.id_category = ' . $parent_id . ';';
                 $parentret = Db::getInstance()->executeS($parentsql);
 
@@ -2933,6 +3041,12 @@ class GShoppingFlux extends Module
                     if (empty($size)) {
                         $size = $parentcat['size'];
                     }
+                    if (empty($size_type)) {
+                        $size_type = $parentcat['size_type'];
+                    }
+                    if (empty($size_system)) {
+                        $size_system = $parentcat['size_system'];
+                    }
                 }
             }
 
@@ -2948,6 +3062,12 @@ class GShoppingFlux extends Module
             if (!$size && !empty($this->module_conf['size'])) {
                 $size = $this->module_conf['size'];
             }
+            if (!$size_type && !empty($this->module_conf['size_type'])) {
+                $size_type = $this->module_conf['size_type'];
+            }
+            if (!$size_system && !empty($this->module_conf['size_system'])) {
+                $size_system = $this->module_conf['size_system'];
+            }
 
             $this->categories_values[$cat['id_category']]['gcategory'] = html_entity_decode($gcategory);
             $this->categories_values[$cat['id_category']]['gcat_condition'] = $condition;
@@ -2958,6 +3078,8 @@ class GShoppingFlux extends Module
             $this->categories_values[$cat['id_category']]['gcat_material'] = explode(';', $material);
             $this->categories_values[$cat['id_category']]['gcat_pattern'] = explode(';', $pattern);
             $this->categories_values[$cat['id_category']]['gcat_size'] = explode(';', $size);
+            $this->categories_values[$cat['id_category']]['gcat_size_type'] = explode(';', $size_type);
+            $this->categories_values[$cat['id_category']]['gcat_size_system'] = explode(';', $size_system);
         }
     }
     /**
@@ -3154,14 +3276,13 @@ class GShoppingFlux extends Module
 
         $sql = 'SELECT DISTINCT p.*, pl.*, ps.id_category_default as category_default, gc.export, glc.tax_included, gl.* '
             . 'FROM ' . _DB_PREFIX_ . 'product p '
-            . 'INNER JOIN ' . _DB_PREFIX_ . 'product_lang pl ON pl.id_product = p.id_product '
-            . 'INNER JOIN ' . _DB_PREFIX_ . 'product_shop ps ON ps.id_product = p.id_product '
-            . 'INNER JOIN ' . _DB_PREFIX_ . 'category c ON c.id_category = p.id_category_default '
-            . 'INNER JOIN ' . _DB_PREFIX_ . 'gshoppingflux gc ON gc.id_gcategory = ps.id_category_default '
-            . 'INNER JOIN ' . _DB_PREFIX_ . 'gshoppingflux_lc glc ON glc.`id_glang` = ' . $id_lang . ' '
-            . 'INNER JOIN ' . _DB_PREFIX_ . 'gshoppingflux_lang gl ON gl.id_gcategory = ps.id_category_default '
-            . 'WHERE `p`.`price` >= 0 AND `c`.`active` = 1 AND `gc`.`export` = 1 '
-            . 'AND `pl`.`id_lang` = ' . $id_lang . ' AND `gl`.`id_lang` = ' . $id_lang;
+            . 'INNER JOIN ' . _DB_PREFIX_ . 'product_lang pl ON `pl`.`id_product` = `p`.`id_product` '
+            . 'INNER JOIN ' . _DB_PREFIX_ . 'product_shop ps ON `ps`.`id_product` = `p`.`id_product` '
+            . 'INNER JOIN ' . _DB_PREFIX_ . 'category c ON `c`.`id_category` = `p`.`id_category_default` '
+            . 'INNER JOIN ' . _DB_PREFIX_ . 'gshoppingflux gc ON `gc`.`id_gcategory` = `ps`.`id_category_default` '
+            . 'INNER JOIN ' . _DB_PREFIX_ . 'gshoppingflux_lc glc ON `pl`.`id_lang` = `glc`.`id_glang` '
+            . 'INNER JOIN ' . _DB_PREFIX_ . 'gshoppingflux_lang gl  ON `gl`.`id_gcategory` = `ps`.`id_category_default` AND `pl`.`id_lang` = `gl`.`id_lang` '
+            . 'WHERE `p`.`price` >= 0 AND `c`.`active` = 1 AND `gc`.`export` = 1  AND `glc`.`id_glang` = ' . $id_lang;
 
         // Multishops filter
         if (Configuration::get('PS_MULTISHOP_FEATURE_ACTIVE') && count(Shop::getShops(true, null, true)) > 1) {
@@ -3480,7 +3601,8 @@ class GShoppingFlux extends Module
     {
         $xml_googleshopping = '';
         $id_lang = (int) $lang['id_lang'];
-        $title_limit = 70;
+        $title_limit = 150;
+        $short_title_limit = 150;
         $description_limit = 4990;
         $languages = Language::getLanguages();
         $tailleTabLang = count($languages);
@@ -3513,6 +3635,7 @@ class GShoppingFlux extends Module
 
         // Product name
         $title_crop = $product['name'];
+        $short_title_crop = $product['name'];
 
         //  Product color attribute, if any
         if (!empty($product['color'])) {
@@ -3528,9 +3651,14 @@ class GShoppingFlux extends Module
             $title_crop .= ' ' . $product['size'];
         }
 
-        if (Tools::strlen($product['name']) > $title_limit) {
+        if (Tools::strlen($title_crop) > $title_limit) {
             $title_crop = Tools::substr($title_crop, 0, $title_limit - 1);
             $title_crop = Tools::substr($title_crop, 0, strrpos($title_crop, ' '));
+        }
+
+        if (Tools::strlen($short_title_crop) > $short_title_limit) {
+            $short_title_crop = Tools::substr($short_title_crop, 0, $short_title_limit - 1);
+            $short_title_crop = Tools::substr($short_title_crop, 0, strrpos($short_title_crop, ' '));
         }
 
         // Description type
@@ -3560,6 +3688,7 @@ class GShoppingFlux extends Module
         $xml_googleshopping .= '<item>' . "\n";
         $xml_googleshopping .= '<g:id>' . $product['gid'] . '</g:id>' . "\n";
         $xml_googleshopping .= '<g:title><![CDATA[' . $title_crop . ']]></g:title>' . "\n";
+        $xml_googleshopping .= '<g:short_title><![CDATA[' . $short_title_crop . ']]></g:short_title>' . "\n";
         $xml_googleshopping .= '<g:description><![CDATA[' . $description_crop . ']]></g:description>' . "\n";
         $xml_googleshopping .= '<g:link><![CDATA[' . $this->linkencode($product_link) . ']]></g:link>' . "\n";
 
@@ -3625,8 +3754,14 @@ class GShoppingFlux extends Module
         $xml_googleshopping .= '<g:product_type><![CDATA[' . $product_type . ']]></g:product_type>' . "\n";
 
         // Matching Google category, or parent categories' one
-        $product['gcategory'] = $this->categories_values[$product['category_default']]['gcategory'];
-        $xml_googleshopping .= '<g:google_product_category><![CDATA[' . $product['gcategory'] . ']]></g:google_product_category>' . "\n";
+        if (
+            isset($product['category_default'])
+            && isset($this->categories_values[$product['category_default']])
+            && isset($this->categories_values[$product['category_default']]['gcategory'])
+        ) {
+            $product['gcategory'] = $this->categories_values[$product['category_default']]['gcategory'];
+            $xml_googleshopping .= '<g:google_product_category><![CDATA[' . $product['gcategory'] . ']]></g:google_product_category>' . "\n";
+        }
 
         // Product quantity & availability
         if (empty($this->categories_values[$product['category_default']]['gcat_avail'])) {
@@ -3635,17 +3770,21 @@ class GShoppingFlux extends Module
             }
             if ($this->ps_stock_management) {
                 if ($product['quantity'] > 0 && $product['available_for_order']) {
-                    $xml_googleshopping .= '<g:availability>in stock</g:availability>' . "\n";
+                    $xml_googleshopping .= '<g:availability>in_stock</g:availability>' . "\n";
                 } elseif ($p->isAvailableWhenOutOfStock((int) $p->out_of_stock) && $product['available_for_order']) {
                     $xml_googleshopping .= '<g:availability>preorder</g:availability>' . "\n";
+                    if ($product['available_date'] != '0000-00-00 00:00:00') {
+                        $available_date = new DateTime($product['available_date']);
+                        $xml_googleshopping .= '<g:availability_date>' . $available_date->format('c') . '</g:availability_date>' . "\n";
+                    }
                 } else {
-                    $xml_googleshopping .= '<g:availability>out of stock</g:availability>' . "\n";
+                    $xml_googleshopping .= '<g:availability>out_of_stock</g:availability>' . "\n";
                 }
             } else {
                 if ($product['available_for_order']) {
-                    $xml_googleshopping .= '<g:availability>in stock</g:availability>' . "\n";
+                    $xml_googleshopping .= '<g:availability>in_stock</g:availability>' . "\n";
                 } else {
-                    $xml_googleshopping .= '<g:availability>out of stock</g:availability>' . "\n";
+                    $xml_googleshopping .= '<g:availability>out_of_stock</g:availability>' . "\n";
                 }
             }
         } else {
@@ -3668,6 +3807,13 @@ class GShoppingFlux extends Module
             $xml_googleshopping .= '<g:sale_price>' . $product['price'] . ' ' . $currency->iso_code . '</g:sale_price>' . "\n";
         } else {
             $xml_googleshopping .= '<g:price>' . $product['price'] . ' ' . $currency->iso_code . '</g:price>' . "\n";
+        }
+        $xml_googleshopping .= '<g:price>' . $product['price'] . ' ' . $currency->iso_code . '</g:price>' . "\n";
+        if ((float) $product['wholesale_price'] > (float) 0) {
+            $product['wholesale_price'] = Tools::ps_round((float) $product['wholesale_price'] * $currency->conversion_rate, $this->getPriceDisplayPrecision());
+            if ((float) $product['wholesale_price'] > 0 && (float) $product['wholesale_price'] < (float) $product['price']) {
+                $xml_googleshopping .= '<g:cost_of_goods_sold>' . $product['wholesale_price'] . ' ' . $currency->iso_code . '</g:cost_of_goods_sold>' . "\n";
+            }
         }
 
         $identifier_exists = 0;
@@ -3746,6 +3892,20 @@ class GShoppingFlux extends Module
                     }
                 }
             }
+            if (!$product['size_type']) {
+                foreach ($this->module_conf['size_type[]'] as $id => $v) {
+                    if ($v == $feature['id_feature']) {
+                        $product['size_type'] = $feature['value'];
+                    }
+                }
+            }
+            if (!$product['size_system']) {
+                foreach ($this->module_conf['size_system[]'] as $id => $v) {
+                    if ($v == $feature['id_feature']) {
+                        $product['size_system'] = $feature['value'];
+                    }
+                }
+            }
         }
 
         //  Product gender attribute, or category gender attribute, or parent's one
@@ -3781,6 +3941,16 @@ class GShoppingFlux extends Module
         // Product size attribute, or category size attribute, or parent's one
         if (!empty($product['size'])) {
             $xml_googleshopping .= '<g:size><![CDATA[' . $product['size'] . ']]></g:size>' . "\n";
+        }
+
+        // Product size type attribute, or category size type attribute, or parent's one
+        if (!empty($product['size_type'])) {
+            $xml_googleshopping .= '<g:size_type><![CDATA[' . $product['size_type'] . ']]></g:size_type>' . "\n";
+        }
+
+        // Product size system attribute, or category size system attribute, or parent's one
+        if (!empty($product['size_system'])) {
+            $xml_googleshopping .= '<g:size_system><![CDATA[' . $product['size_system'] . ']]></g:size_system>' . "\n";
         }
 
         // Featured products
