@@ -2465,7 +2465,7 @@ class GShoppingFlux extends Module
         ];
         $helper->title = $this->l('Export languages and currencies');
         $helper->token = Tools::getAdminTokenLite('AdminModules');
-        $helper->currentIndex = AdminController::$currentIndex . '&configure=' . $this->name;
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false) . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
         $helper->tpl_vars = [
             'languages' => $this->context->controller->getLanguages(),
         ];
@@ -2574,7 +2574,7 @@ class GShoppingFlux extends Module
         $helper->module = $this;
         $helper->title = $this->l('Google categories');
         $helper->token = Tools::getAdminTokenLite('AdminModules');
-        $helper->currentIndex = AdminController::$currentIndex . '&configure=' . $this->name;
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false) . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
 
         return $helper->generateList($gcategories, $fields_list);
     }
