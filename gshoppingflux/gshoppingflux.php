@@ -695,17 +695,17 @@ class GShoppingFlux extends Module
         $updated &= Configuration::updateValue('GS_SHIPPING_MODE', Tools::getValue('shipping_mode'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_SHIPPING_PRICE', (float) Tools::getValue('shipping_price'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_SHIPPING_COUNTRY', Tools::getValue('shipping_country'), false, (int) $shop_group_id, (int) $shop_id);
-        $updated &= Configuration::updateValue('GS_SHIPPING_COUNTRIES', ArrayHelper::safeImplode('shipping_countries'), false, (int) $shop_group_id, (int) $shop_id);
-        $updated &= Configuration::updateValue('GS_CARRIERS_EXCLUDED', ArrayHelper::safeImplode('carriers_excluded'), false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_SHIPPING_COUNTRIES', ArrayHelper::safeImplode((array) Tools::getValue('shipping_countries')), false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_CARRIERS_EXCLUDED', ArrayHelper::safeImplode((array) Tools::getValue('carriers_excluded')), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_IMG_TYPE', Tools::getValue('img_type'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_MPN_TYPE', Tools::getValue('mpn_type'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_GENDER', Tools::getValue('gender'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_AGE_GROUP', Tools::getValue('age_group'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_ATTRIBUTES', Tools::getValue('export_attributes'), false, (int) $shop_group_id, (int) $shop_id);
-        $updated &= Configuration::updateValue('GS_COLOR', ArrayHelper::safeImplode('color'), false, (int) $shop_group_id, (int) $shop_id);
-        $updated &= Configuration::updateValue('GS_MATERIAL', ArrayHelper::safeImplode('material'), false, (int) $shop_group_id, (int) $shop_id);
-        $updated &= Configuration::updateValue('GS_PATTERN', ArrayHelper::safeImplode('pattern'), false, (int) $shop_group_id, (int) $shop_id);
-        $updated &= Configuration::updateValue('GS_SIZE', ArrayHelper::safeImplode('size'), false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_COLOR', ArrayHelper::safeImplode((array) Tools::getValue('color')), false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_MATERIAL', ArrayHelper::safeImplode((array) Tools::getValue('material')), false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_PATTERN', ArrayHelper::safeImplode((array) Tools::getValue('pattern')), false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_SIZE', ArrayHelper::safeImplode((array) Tools::getValue('size')), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_EXPORT_MIN_PRICE', (float) Tools::getValue('export_min_price'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_NO_GTIN', (bool) Tools::getValue('no_gtin'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_SHIPPING_DIMENSION', (bool) Tools::getValue('shipping_dimension'), false, (int) $shop_group_id, (int) $shop_id);
@@ -797,7 +797,7 @@ class GShoppingFlux extends Module
     private function saveLanguage($shop_id, $shop_group_id)
     {
         $id_glang = (int) Tools::getValue('id_glang', 0);
-        $currencies = ArrayHelper::safeImplode('currencies');
+        $currencies = ArrayHelper::safeImplode((array) Tools::getValue('currencies'));
         $tax_included = (int) Tools::getValue('tax_included', 0);
         $export = (int) Tools::getValue('active', 0);
 
