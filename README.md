@@ -54,7 +54,7 @@ Depending on your store and what you want to send to google, you would need to c
 
 ## Changelog
 
-### Version 1.7.9 (2026)
+### Version 1.8.0 (2026)
 
 - Fix `<g:shipping_width>` reporting product depth instead of width
 - Fix title/short_title/description truncation producing an empty value when no word boundary was found near the length limit
