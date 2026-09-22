@@ -158,6 +158,31 @@ trait FeedGeneratorTrait
         return str_replace(']]>', ']]]]><![CDATA[>', (string) $string);
     }
 
+    /**
+     * Truncate $string to at most $limit characters, snapping back to the
+     * last space in the truncated result so the cut doesn't land mid-word.
+     *
+     * If the truncated prefix has no space to snap to, the hard cut at
+     * $limit is kept as-is: strrpos() returning false must never be fed
+     * straight back into substr()'s length argument, since false casts to
+     * 0 there and silently produces an empty string.
+     *
+     * @param string $string
+     * @param int $limit
+     * @return string $string unchanged if already within $limit
+     */
+    private function truncateAtWordBoundary($string, $limit)
+    {
+        if (Tools::strlen($string) <= $limit) {
+            return $string;
+        }
+
+        $truncated = Tools::substr($string, 0, $limit - 1);
+        $pos = strrpos($truncated, ' ');
+
+        return $pos !== false ? Tools::substr($truncated, 0, $pos) : $truncated;
+    }
+
     private function generateXMLFiles($lang_id, $shop_id, $shop_group_id, $local_inventory = false, $reviews = false)
     {
         if (isset($lang_id) && $lang_id != 0) {
@@ -822,21 +847,8 @@ trait FeedGeneratorTrait
             $title_crop .= ' ' . $product['size'];
         }
 
-        if (Tools::strlen($title_crop) > $title_limit) {
-            $title_crop = Tools::substr($title_crop, 0, $title_limit - 1);
-            $title_crop_pos = strrpos($title_crop, ' ');
-            if ($title_crop_pos !== false) {
-                $title_crop = Tools::substr($title_crop, 0, $title_crop_pos);
-            }
-        }
-
-        if (Tools::strlen($short_title_crop) > $short_title_limit) {
-            $short_title_crop = Tools::substr($short_title_crop, 0, $short_title_limit - 1);
-            $short_title_crop_pos = strrpos($short_title_crop, ' ');
-            if ($short_title_crop_pos !== false) {
-                $short_title_crop = Tools::substr($short_title_crop, 0, $short_title_crop_pos);
-            }
-        }
+        $title_crop = $this->truncateAtWordBoundary($title_crop, $title_limit);
+        $short_title_crop = $this->truncateAtWordBoundary($short_title_crop, $short_title_limit);
 
         // Description type
         if ($this->module_conf['description'] == 'long') {
@@ -858,12 +870,7 @@ trait FeedGeneratorTrait
         $description_crop = $this->rip_tags($description_crop);
 
         if (Tools::strlen($description_crop) > $description_limit) {
-            $description_crop = Tools::substr($description_crop, 0, $description_limit - 1);
-            $description_crop_pos = strrpos($description_crop, ' ');
-            if ($description_crop_pos !== false) {
-                $description_crop = Tools::substr($description_crop, 0, $description_crop_pos);
-            }
-            $description_crop .= ' ...';
+            $description_crop = $this->truncateAtWordBoundary($description_crop, $description_limit) . ' ...';
         }
 
         $xml_googleshopping .= '<item>' . "\n";

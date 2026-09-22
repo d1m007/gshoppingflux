@@ -6,11 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A PrestaShop module (`gshoppingflux`) that exports store products as an XML feed for Google Merchant Center. The same feed format is also consumed by Shopalike, Pricerunner, and Partner-Ads. It supports PrestaShop 1.5 through 9.x, multi-shop, multi-language, and multi-currency setups.
 
-There is no test suite or release pipeline in this repo — it is plain PHP dropped into a PrestaShop `modules/` directory and only runs inside a PrestaShop installation (nothing here executes standalone). Composer is used only to generate the PSR-4 autoloader committed under `vendor/` (see "Entry point and file layout" below); there are no third-party runtime dependencies.
+There is no release pipeline in this repo — it is plain PHP dropped into a PrestaShop `modules/` directory and only runs inside a PrestaShop installation (nothing here executes standalone). Composer manages the PSR-4 autoloader used at runtime and, as a dev dependency, PHPUnit for the unit test suite under `tests/`; there are no third-party runtime dependencies.
 
 ## Running and testing changes
 
-There is no local dev server or test command. To exercise the module you need it installed inside an actual PrestaShop instance:
+There's no PrestaShop instance to run the module against in this environment, and no database — so most of the module's own behavior (admin screens, actual feed generation against real products) can only be exercised inside a real PrestaShop install, the same way as before:
 
 ```bash
 # symlink or copy the module directory into a PrestaShop install
@@ -35,6 +35,18 @@ php -l gshoppingflux/gshoppingflux.php
 for f in gshoppingflux/src/*.php gshoppingflux/src/Traits/*.php; do php -l "$f"; done
 ```
 
+### Unit tests
+
+`tests/` (PHPUnit, `GShoppingFlux\Tests\` PSR-4) covers the pieces of `src/` that don't need a live PrestaShop: `ArrayHelper`, the pure-string helpers in `FeedGeneratorTrait` (`cdataSafe()`, `truncateAtWordBoundary()`), and `GCategories::getPath()`'s breadcrumb recursion. It stubs the handful of PrestaShop core classes those touch (`tests/Stubs/Tools.php`, `Validate.php`, `Category.php`) rather than depending on a real install — these are not behavioral clones of core, only what the tested code actually calls, so extend them if a new test needs more of a stubbed class's surface.
+
+```bash
+cd gshoppingflux
+composer install          # pulls in phpunit (dev-only; vendor/ is gitignored)
+composer test              # or: vendor/bin/phpunit
+```
+
+Nothing under `AdminOptionsTrait`, `AdminCategoriesLangTrait`, `LifecycleTrait`, or the DB-querying/HTTP-facing parts of `FeedGeneratorTrait`/`ReviewsFeedTrait` is unit-tested — those need PrestaShop's `Db`, `HelperForm`, `Context`, and a real admin request to exercise meaningfully, which is out of reach without a PrestaShop instance. Keep testing new pure logic the same way (extract it to a small private method with no `Db`/`Context` dependency, like `truncateAtWordBoundary()`) rather than trying to stub your way into the framework-heavy methods.
+
 ## Architecture
 
 ### Entry point and file layout
@@ -50,7 +62,8 @@ for f in gshoppingflux/src/*.php gshoppingflux/src/Traits/*.php; do php -l "$f";
     - `AdminCategoriesLangTrait` — the category-mapping and language/currency admin screens, plus the feature/attribute/category-tree data helpers they use.
     - `FeedGeneratorTrait` — the standard and local inventory feed generation engine (`generateAllShopsFileList()` down to `getItemXML()`).
     - `ReviewsFeedTrait` — `generateReviewsFile()`, a separate XML schema from the shopping feed.
-- `gshoppingflux/composer.json` / `gshoppingflux/vendor/` — PSR-4 autoload mapping (`"GShoppingFlux\\": "src/"`) and its generated, committed autoloader. `gshoppingflux.php` requires `vendor/autoload.php` when present; if a deployment ships without `vendor/` (e.g. a hand-copied checkout), it falls back to explicit `require_once` calls for the same files, so the module works either way without requiring merchants to run Composer themselves.
+- `gshoppingflux/composer.json` — PSR-4 autoload mapping (`"GShoppingFlux\\": "src/"`) plus the `phpunit/phpunit` dev dependency for `tests/`. `vendor/` is gitignored (it now pulls in phpunit and its transitive packages, not just our own autoloader) and generated with `composer install`. `gshoppingflux.php` requires `vendor/autoload.php` when present, and falls back to explicit `require_once` calls for the same `src/` files when it's absent — so the module works unmodified for a merchant who copies the folder as-is with no `vendor/` and no Composer step.
+- `gshoppingflux/tests/` — PHPUnit unit tests (`GShoppingFlux\Tests\` PSR-4), `tests/Stubs/` for the PrestaShop core class stand-ins they need. See "Unit tests" above.
 - `gshoppingflux/cron.php` — standalone bootstrap script that PrestaShop's task scheduler (or an external cron) hits to regenerate feeds.
 - `gshoppingflux/export/` — default output directory for generated XML files (can be overridden to the PrestaShop webroot via the `gen_file_in_root` setting).
 - `gshoppingflux/views/templates/admin/_configure/helpers/form/form.tpl` — Smarty template wrapping the admin config form.
@@ -102,5 +115,5 @@ Two parallel formats reuse most of this machinery:
 - PrestaShop 9 dropped several old APIs this module used to depend on (`ToolsCore`, uppercase `Db` methods, `_PS_PRICE_DISPLAY_PRECISION_`); the compatibility shims for that are in `getPriceDisplayPrecision()` (`FeedGeneratorTrait`) and scattered `Tools::`/`Db::` call sites — when touching pricing or DB calls, keep both the PS 1.5 and PS 9 code paths working, per `ps_versions_compliancy` (`1.5.0.0` to `9.99.99`).
 - `id_shop = 0` rows are shared/global fallbacks in the three custom tables, not a literal shop with ID 0 — deleting or filtering these tables without accounting for that will break single-shop installs too.
 - `gshoppingflux.php` stays unnamespaced on purpose (see "Entry point and file layout"); don't add a `namespace` declaration to it or PrestaShop will fail to find the `GShoppingFlux` class. Everything under `src/` is namespaced `GShoppingFlux\` (or `GShoppingFlux\Traits\`) and needs `use` imports for both PrestaShop core classes and this module's own `GCategories`/`GLangAndCurrency`/`ArrayHelper`.
-- After adding, removing, or renaming a file under `src/`, run `composer dump-autoload -o` from `gshoppingflux/` and commit the regenerated `vendor/` — the classmap is committed, not built at deploy time, since merchants install the module by uploading a zip rather than running Composer.
+- `vendor/` is gitignored — don't commit it. After adding, removing, or renaming a file under `src/`, run `composer dump-autoload -o` from `gshoppingflux/` locally so your own `vendor/` stays in sync; there's nothing to commit for it. Do commit `composer.lock` when `composer.json`'s dependencies change, so `composer install` stays reproducible.
 - The five traits share one flat method namespace once composed into `GShoppingFlux` (PHP fatal-errors on a name collision between two `use`'d traits) — before adding a method to a trait, check the others don't already declare a method with that name.

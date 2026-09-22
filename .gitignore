@@ -1,0 +1,10 @@
+# Composer dependencies (dev-only: phpunit and its transitive packages).
+# gshoppingflux.php falls back to plain require_once when vendor/ is
+# absent, so the module still works with no Composer step for merchants
+# who install it as a plain zip; run `composer install --no-dev` (or just
+# ship src/ as-is) to produce a distributable copy without dev tooling.
+/gshoppingflux/vendor/
+
+# PHPUnit's own cache file
+/gshoppingflux/.phpunit.result.cache
+/gshoppingflux/.phpunit.cache/

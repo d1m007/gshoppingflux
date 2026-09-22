@@ -11,8 +11,19 @@
             "GShoppingFlux\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "GShoppingFlux\\Tests\\": "tests/"
+        }
+    },
     "config": {
         "optimize-autoloader": true,
         "sort-packages": true
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.6"
+    },
+    "scripts": {
+        "test": "phpunit"
     }
 }
