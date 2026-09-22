@@ -121,6 +121,7 @@ class GShoppingFlux extends Module
         'GS_GEN_FILE_IN_ROOT' => '1',
         'GS_FILE_PREFIX' => '',
         'GS_LOCAL_SHOP_CODE' => '',
+        'GS_CRON_TOKEN' => '',
     ];
 
     /**
@@ -182,6 +183,22 @@ class GShoppingFlux extends Module
 
     /** Free shipping configuration */
     private $free_shipping;
+
+    /** Admin confirmation/status message accumulated across save handlers */
+    private $confirm = '';
+
+    /** HelperForm field definitions for the form currently being rendered */
+    private $fields_form = [];
+
+    /** Module page identifier (basename of this file without extension) */
+    private $page;
+
+    /**
+     * Per-generateFile()-run cache of Carrier::getCarriers() results keyed
+     * by id_zone, so the "full" shipping mode doesn't re-query the same
+     * zone's carrier list for every exported product.
+     */
+    private $carriersByZoneCache = [];
 
     // ============================================================
     // CONSTRUCTOR

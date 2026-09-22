@@ -174,6 +174,8 @@ trait AdminOptionsTrait
         $updated &= Configuration::updateValue('GS_FEATURED_PRODUCTS', (bool) Tools::getValue('featured_products'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_GEN_FILE_IN_ROOT', (bool) Tools::getValue('gen_file_in_root'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_FILE_PREFIX', trim(Tools::getValue('file_prefix')), false, (int) $shop_group_id, (int) $shop_id);
+        $cron_token = preg_replace('/[^a-zA-Z0-9_-]/', '', trim((string) Tools::getValue('cron_token')));
+        $updated &= Configuration::updateValue('GS_CRON_TOKEN', $cron_token, false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_AUTOEXPORT_ON_SAVE', (bool) Tools::getValue('autoexport_on_save'), false, (int) $shop_group_id, (int) $shop_id);
 
         $this->reportSaveResult($updated, $shop_id, $shop_group_id);
@@ -731,6 +733,14 @@ trait AdminOptionsTrait
                         'class' => 'fixed-width-lg',
                         'desc' => $this->l('Allows you to prefix feed filename. Makes it a little harder for other to guess your feed names'),
                     ],
+                    // CRON security token field
+                    [
+                        'type' => 'text',
+                        'label' => $this->l('CRON security token'),
+                        'name' => 'cron_token',
+                        'class' => 'fixed-width-lg',
+                        'desc' => $this->l('Optional. When set, cron.php requires "&token=<this value>" to run, preventing anyone from triggering a feed regeneration. Leave empty to keep cron.php open as before.'),
+                    ],
                     // Auto-export toggle
                     $this->boolSwitchField(
                         'autoexport_on_save',
@@ -924,6 +934,7 @@ trait AdminOptionsTrait
         $gen_file_in_root &= (bool) Configuration::get('GS_GEN_FILE_IN_ROOT', 0, $shop_group_id, $shop_id);
         $autoexport_on_save &= (bool) Configuration::get('GS_AUTOEXPORT_ON_SAVE', 0, $shop_group_id, $shop_id);
         $file_prefix = Configuration::get('GS_FILE_PREFIX', 0, $shop_group_id, $shop_id);
+        $cron_token = Configuration::get('GS_CRON_TOKEN', 0, $shop_group_id, $shop_id);
 
         // Return formatted array for form display
         return [
@@ -954,6 +965,7 @@ trait AdminOptionsTrait
             'featured_products' => (int) $featured_products,
             'gen_file_in_root' => (int) $gen_file_in_root,
             'file_prefix' => $file_prefix,
+            'cron_token' => $cron_token,
             'autoexport_on_save' => (int) $autoexport_on_save,
         ];
     }

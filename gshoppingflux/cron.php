@@ -23,8 +23,18 @@ $start = (float) array_sum(explode(' ', microtime()));
 try {
     $module = new GShoppingFlux();
     $shop_id = Shop::getContextShopID();
+    $shop_group_id = Shop::getGroupFromShop($shop_id);
     $local_inventory = gshoppingfluxCronBoolParam('local');
     $reviews = gshoppingfluxCronBoolParam('reviews');
+
+    // GS_CRON_TOKEN is empty by default (unchanged behavior for existing
+    // installs/cron jobs). When an employee sets one in the module's
+    // settings, cron.php requires a matching ?token=... to run.
+    $cron_token = Configuration::get('GS_CRON_TOKEN', 0, $shop_group_id, $shop_id);
+    if ($cron_token !== false && $cron_token !== '' && !hash_equals((string) $cron_token, (string) Tools::getValue('token', ''))) {
+        http_response_code(403);
+        exit('KO, invalid or missing token.');
+    }
 
     $result = $module->generateShopFileList($shop_id, $local_inventory, $reviews);
 } catch (Exception $e) {

@@ -836,9 +836,17 @@ trait AdminCategoriesLangTrait
         }
         $output .= '<a href="' . $get_reviews_file_url . '">' . $get_reviews_file_url . '</a> <br /> ';
 
-        $info_cron = '<a href="' . $this->uri . 'modules/' . $this->name . '/cron.php" target="_blank">' . $this->uri . 'modules/' . $this->name . '/cron.php</a>';
-        $info_cron .= '<br/><a href="' . $this->uri . 'modules/' . $this->name . '/cron.php?local=true" target="_blank">' . $this->uri . 'modules/' . $this->name . '/cron.php?local=true</a>';
-        $info_cron .= '<br/><a href="' . $this->uri . 'modules/' . $this->name . '/cron.php?reviews=true" target="_blank">' . $this->uri . 'modules/' . $this->name . '/cron.php?reviews=true</a>';
+        $cron_token = Configuration::get('GS_CRON_TOKEN', 0, $this->context->shop->id_shop_group, $this->context->shop->id);
+        $cron_base_url = $this->uri . 'modules/' . $this->name . '/cron.php';
+        // No other query param on the plain URL, so it needs "?token=...";
+        // the local/reviews variants already have one, so "&token=...".
+        $cron_url_plain = $cron_base_url . (!empty($cron_token) ? '?token=' . $cron_token : '');
+        $cron_url_local = $cron_base_url . '?local=true' . (!empty($cron_token) ? '&token=' . $cron_token : '');
+        $cron_url_reviews = $cron_base_url . '?reviews=true' . (!empty($cron_token) ? '&token=' . $cron_token : '');
+
+        $info_cron = '<a href="' . $cron_url_plain . '" target="_blank">' . $cron_url_plain . '</a>';
+        $info_cron .= '<br/><a href="' . $cron_url_local . '" target="_blank">' . $cron_url_local . '</a>';
+        $info_cron .= '<br/><a href="' . $cron_url_reviews . '" target="_blank">' . $cron_url_reviews . '</a>';
 
         if (count($languages) > 1) {
             $files_desc = $this->l('Configure these URLs in your Google Merchant Center account.');
@@ -1026,8 +1034,15 @@ trait AdminCategoriesLangTrait
      * @param array|int $catlist Accumulator array for recursive calls (default: 0)
      * @return array Complete flattened category tree with all nested relationships
      */
-    private function makeCatTree($id_cat = 0, $catlist = 0)
+    private function makeCatTree($id_cat = 0, $catlist = 0, $depth = 0)
     {
+        // Same safety net as GCategories::getPath(): a corrupted category
+        // graph (a category listed as its own descendant) must not recurse
+        // until the stack/memory limit is hit.
+        if ($depth > GCategories::MAX_PATH_DEPTH) {
+            return is_array($catlist) ? $catlist : [];
+        }
+
         $id_lang = (int) $this->context->language->id;
         $id_shop = (int) Shop::getContextShopID();
         $sql_filter = '';
@@ -1052,7 +1067,7 @@ trait AdminCategoriesLangTrait
         foreach ($tabcat as $k => $c) {
             if (!empty($c['children'])) {
                 foreach ($c['children'] as $j) {
-                    $catlist = $this->makeCatTree($j['id_category'], $catlist);
+                    $catlist = $this->makeCatTree($j['id_category'], $catlist, $depth + 1);
                 }
             }
         }

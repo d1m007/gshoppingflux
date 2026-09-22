@@ -14,6 +14,9 @@ class Category
     /** @var array<int, array{id_parent: int, active: int, name: string}> */
     public static $fixtures = [];
 
+    /** @var array<int, int> Number of times each fixture id was instantiated, for cache tests */
+    public static $loadCounts = [];
+
     public $id = 0;
     public $id_category = 0;
     public $id_parent = 0;
@@ -25,6 +28,8 @@ class Category
         if ($id_category === null || !isset(self::$fixtures[$id_category])) {
             return;
         }
+
+        self::$loadCounts[$id_category] = (self::$loadCounts[$id_category] ?? 0) + 1;
 
         $data = self::$fixtures[$id_category];
         $this->id = (int) $id_category;

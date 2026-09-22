@@ -27,6 +27,8 @@ class GCategoriesTest extends TestCase
     protected function tearDown(): void
     {
         Category::$fixtures = [];
+        Category::$loadCounts = [];
+        GCategories::resetCache();
     }
 
     public function testGetPathBuildsBreadcrumbUpToRoot()
@@ -64,5 +66,31 @@ class GCategoriesTest extends TestCase
         $path = GCategories::getPath(5, '', 1, 1, 1);
 
         $this->assertSame('Numbered Category', $path);
+    }
+
+    public function testGetPathStopsOnACyclicParentChainInsteadOfRecursingForever()
+    {
+        // A corrupted id_parent chain (6 -> 7 -> 6 -> ...) never reaches
+        // id_root=1; getPath() must bail out via its depth cap rather than
+        // exhausting the call stack.
+        Category::$fixtures[6] = ['id_parent' => 7, 'active' => 1, 'name' => 'Cyclic A'];
+        Category::$fixtures[7] = ['id_parent' => 6, 'active' => 1, 'name' => 'Cyclic B'];
+
+        $path = GCategories::getPath(6, '', 1, 1, 1);
+
+        $this->assertIsString($path);
+    }
+
+    public function testCategoryLookupIsCachedAcrossGetPathCalls()
+    {
+        GCategories::getPath(3, '', 1, 1, 1);
+        GCategories::getPath(3, '', 1, 1, 1);
+
+        // Both calls walk the same 3 -> 2 -> 1 chain; caching means each
+        // category is only actually instantiated once across both calls
+        // instead of once per call.
+        $this->assertSame(1, Category::$loadCounts[3]);
+        $this->assertSame(1, Category::$loadCounts[2]);
+        $this->assertSame(1, Category::$loadCounts[1]);
     }
 }

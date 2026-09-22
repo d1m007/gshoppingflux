@@ -6,6 +6,7 @@ use Configuration;
 use DateTime;
 use Db;
 use Product;
+use RuntimeException;
 use Shop;
 
 /**
@@ -58,6 +59,9 @@ trait ReviewsFeedTrait
         $xml .= '</publisher>' . "\n";
 
         $googleshoppingfile = fopen($generate_file_path, 'w');
+        if ($googleshoppingfile === false) {
+            throw new RuntimeException('gshoppingflux: unable to open "' . $generate_file_path . '" for writing.');
+        }
 
         // Add UTF-8 byte order mark
         fwrite($googleshoppingfile, pack('CCC', 0xEF, 0xBB, 0xBF));
@@ -82,12 +86,12 @@ trait ReviewsFeedTrait
             $xml .= '<review>' . "\n";
             $xml .= '<review_id>' . $comment['id_product_comment'] . '</review_id>' . "\n";
             $xml .= '<reviewer>' . "\n";
-            $xml .= '<name is_anonymous="' . $comment['anonymous'] . '">' . htmlspecialchars($comment['customer_name'], self::REPLACE_FLAGS, self::CHARSET, false) . '</name>' . "\n";
+            $xml .= '<name is_anonymous="' . $comment['anonymous'] . '">' . htmlspecialchars((string) $comment['customer_name'], self::REPLACE_FLAGS, self::CHARSET, false) . '</name>' . "\n";
             $xml .= '</reviewer>' . "\n";
             $date_add = new DateTime($comment['date_add']);
             $xml .= '<review_timestamp>' . $date_add->format(DATE_ATOM) . '</review_timestamp>' . "\n";
-            $xml .= '<title>' . htmlspecialchars($comment['title'], self::REPLACE_FLAGS, self::CHARSET, false) . '</title>' . "\n";
-            $xml .= '<content>' . htmlspecialchars($comment['content'], self::REPLACE_FLAGS, self::CHARSET, false) . '</content>' . "\n";
+            $xml .= '<title>' . htmlspecialchars((string) $comment['title'], self::REPLACE_FLAGS, self::CHARSET, false) . '</title>' . "\n";
+            $xml .= '<content>' . htmlspecialchars((string) $comment['content'], self::REPLACE_FLAGS, self::CHARSET, false) . '</content>' . "\n";
             $product_link = $this->context->link->getProductLink($comment['id_product'], $p->link_rewrite);
             $xml .= '<review_url type="group">' . $product_link . '</review_url>' . "\n";
             $xml .= '<ratings>' . "\n";

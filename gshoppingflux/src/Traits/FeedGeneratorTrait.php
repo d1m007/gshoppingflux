@@ -16,6 +16,7 @@ use Language;
 use Manufacturer;
 use Product;
 use ProductSupplier;
+use RuntimeException;
 use Shop;
 use StockAvailable;
 use Tax;
@@ -131,6 +132,11 @@ trait FeedGeneratorTrait
      */
     private function rip_tags($string)
     {
+        // A NULL source column (e.g. an empty meta_description) must not
+        // reach preg_replace()/str_replace()/trim() as null: deprecated
+        // since PHP 8.1 for non-nullable internal function parameters.
+        $string = (string) $string;
+
         // Remove HTML/XML tags
         $string = preg_replace('/<[^>]*>/', ' ', $string);
 
@@ -185,23 +191,32 @@ trait FeedGeneratorTrait
 
     private function generateXMLFiles($lang_id, $shop_id, $shop_group_id, $local_inventory = false, $reviews = false)
     {
-        if (isset($lang_id) && $lang_id != 0) {
-            $count = $this->generateLangFileList($lang_id, $shop_id, $local_inventory);
-            $languages = GLangAndCurrency::getLangCurrencies($lang_id, $shop_id);
-        } else {
-            $count = $this->generateShopFileList($shop_id, $local_inventory, $reviews);
-            $languages = GLangAndCurrency::getAllLangCurrencies(1, (int) $shop_id);
-            if ($reviews) {
-                if (Configuration::get('GS_GEN_FILE_IN_ROOT', 0, $shop_group_id, $shop_id) == 1) {
-                    $get_file_url = $this->uri . $this->_getOutputFileName(0, 0, $shop_id, $local_inventory, $reviews);
-                } else {
-                    $get_file_url = $this->uri . 'modules/' . $this->name . '/export/' . $this->_getOutputFileName(0, 0, $shop_id, $local_inventory, $reviews);
-                }
-                $this->confirm .= '<br /> <a href="' . $get_file_url . '" target="_blank">' . $get_file_url . '</a> : ' . $count['nb_reviews'] . ' ' . $this->l('reviews exported');
-                $this->_html .= $this->displayConfirmation(html_entity_decode($this->confirm));
+        try {
+            if (isset($lang_id) && $lang_id != 0) {
+                $count = $this->generateLangFileList($lang_id, $shop_id, $local_inventory);
+                $languages = GLangAndCurrency::getLangCurrencies($lang_id, $shop_id);
+            } else {
+                $count = $this->generateShopFileList($shop_id, $local_inventory, $reviews);
+                $languages = GLangAndCurrency::getAllLangCurrencies(1, (int) $shop_id);
+                if ($reviews) {
+                    if (Configuration::get('GS_GEN_FILE_IN_ROOT', 0, $shop_group_id, $shop_id) == 1) {
+                        $get_file_url = $this->uri . $this->_getOutputFileName(0, 0, $shop_id, $local_inventory, $reviews);
+                    } else {
+                        $get_file_url = $this->uri . 'modules/' . $this->name . '/export/' . $this->_getOutputFileName(0, 0, $shop_id, $local_inventory, $reviews);
+                    }
+                    $this->confirm .= '<br /> <a href="' . $get_file_url . '" target="_blank">' . $get_file_url . '</a> : ' . $count['nb_reviews'] . ' ' . $this->l('reviews exported');
+                    $this->_html .= $this->displayConfirmation(html_entity_decode($this->confirm));
 
-                return;
+                    return;
+                }
             }
+        } catch (RuntimeException $e) {
+            // Surfaced from generateFile()/generateReviewsFile() when the
+            // export file couldn't be opened for writing (e.g. export/ not
+            // writable): show it as an admin error instead of a fatal one.
+            $this->_html .= $this->displayError($e->getMessage());
+
+            return;
         }
 
         foreach ($languages as $i => $lang) {
@@ -354,6 +369,11 @@ trait FeedGeneratorTrait
     private function _getOutputFileName($lang, $curr, $shop, $local_inventory = false, $reviews = false)
     {
         $file_prefix = Configuration::get('GS_FILE_PREFIX', '', $this->context->shop->id_shop_group, $this->context->shop->id);
+        // Strip anything that isn't a plain filename character: GS_FILE_PREFIX
+        // is free text an employee can set, and it lands directly in the
+        // path this method's caller opens for writing. Without this, a
+        // prefix containing "/" or ".." could write the feed outside export/.
+        $file_prefix = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $file_prefix);
 
         return ($file_prefix ? $file_prefix . '_' : '') . 'googleshopping'
             . ($local_inventory ? '-local-inventory' : ($reviews ? '-reviews' : ''))
@@ -382,7 +402,7 @@ trait FeedGeneratorTrait
 				AND ml.id_shop = ' . (int) $id_shop . '
 				AND ml.id_lang = ' . (int) $id_lang);
 
-        return $ret[0]['description'];
+        return isset($ret[0]['description']) ? $ret[0]['description'] : '';
     }
 
     /**
@@ -395,6 +415,8 @@ trait FeedGeneratorTrait
      */
     public function generateAllShopsFileList()
     {
+        $ret = [];
+
         // Get all shops
         $shops = Shop::getShops(true, null, true);
         foreach ($shops as $i => $shop) {
@@ -420,6 +442,8 @@ trait FeedGeneratorTrait
         if ($reviews) {
             return $this->generateReviewsFile($id_shop);
         }
+        $ret = [];
+
         // Get all shop languages
         $languages = GLangAndCurrency::getAllLangCurrencies(1, (int) $id_shop);
         foreach ($languages as $i => $lang) {
@@ -445,6 +469,8 @@ trait FeedGeneratorTrait
      */
     public function generateLangFileList($id_lang, $id_shop, $local_inventory = false)
     {
+        $ret = [];
+
         // Get all shop languages
         $languages = GLangAndCurrency::getLangCurrencies($id_lang, $id_shop);
         foreach ($languages as $i => $lang) {
@@ -508,8 +534,15 @@ trait FeedGeneratorTrait
 
     private function generateFile($lang, $id_curr, $id_shop, $local_inventory = false)
     {
+        $this->carriersByZoneCache = [];
+
         $id_lang = (int) $lang['id_lang'];
-        $curr = new Currency($id_curr);
+        // Built once here and threaded through getItemXML()/
+        // getLocalInventoryItemXML() below instead of each rebuilding its
+        // own copy per item (they're identical for the whole file).
+        $currency = new Currency($id_curr);
+        $languages = Language::getLanguages();
+        $tailleTabLang = count($languages);
         $this->shop = new Shop($id_shop);
         $root = Category::getRootCategory($id_lang, $this->shop);
         $this->id_root = $root->id_category;
@@ -523,9 +556,9 @@ trait FeedGeneratorTrait
 
         // Init file_path value
         if ($this->module_conf['gen_file_in_root']) {
-            $generate_file_path = dirname(__FILE__) . '/../../' . $this->_getOutputFileName($lang['iso_code'], $curr->iso_code, $id_shop, $local_inventory);
+            $generate_file_path = dirname(__FILE__) . '/../../' . $this->_getOutputFileName($lang['iso_code'], $currency->iso_code, $id_shop, $local_inventory);
         } else {
-            $generate_file_path = dirname(__FILE__) . '/export/' . $this->_getOutputFileName($lang['iso_code'], $curr->iso_code, $id_shop, $local_inventory);
+            $generate_file_path = dirname(__FILE__) . '/export/' . $this->_getOutputFileName($lang['iso_code'], $currency->iso_code, $id_shop, $local_inventory);
         }
 
         if ($this->shop->name == 'Prestashop') {
@@ -535,6 +568,9 @@ trait FeedGeneratorTrait
         $xml = $this->buildFeedHeaderXml($id_lang, $id_shop);
 
         $googleshoppingfile = fopen($generate_file_path, 'w');
+        if ($googleshoppingfile === false) {
+            throw new RuntimeException('gshoppingflux: unable to open "' . $generate_file_path . '" for writing.');
+        }
 
         // Add UTF-8 byte order mark
         fwrite($googleshoppingfile, pack('CCC', 0xEF, 0xBB, 0xBF));
@@ -597,6 +633,10 @@ trait FeedGeneratorTrait
                 foreach ($attributesResume as $productCombination) {
                     $product = $original_product;
                     $attributes = $p->getAttributeCombinationsById($productCombination['id_product_attribute'], $id_lang);
+                    // Reset before the loop: if $attributes comes back empty
+                    // for this combination, $a must not keep the previous
+                    // combination's row (it's read again below).
+                    $a = [];
                     foreach ($attributes as $a) {
                         if (in_array($a['id_attribute_group'], $categories_value['gcat_color'])) {
                             $product['color'] = $a['attribute_name'];
@@ -620,18 +660,18 @@ trait FeedGeneratorTrait
                     $product['item_group_id'] = $product['id_product'];
                     $product['gid'] = $product['id_product'] . '-' . $productCombination['id_product_attribute'];
                     if ($local_inventory) {
-                        $xml_googleshopping = $this->getLocalInventoryItemXML($product, $lang, $id_curr, $id_shop, $productCombination['id_product_attribute']);
+                        $xml_googleshopping = $this->getLocalInventoryItemXML($product, $lang, $p, $currency, $id_shop, $productCombination['id_product_attribute']);
                     } else {
-                        $xml_googleshopping = $this->getItemXML($product, $lang, $id_curr, $id_shop, $productCombination['id_product_attribute']);
+                        $xml_googleshopping = $this->getItemXML($product, $lang, $p, $currency, $id_shop, $languages, $tailleTabLang, $productCombination['id_product_attribute']);
                     }
                     fwrite($googleshoppingfile, $xml_googleshopping);
                 }
                 unset($original_product);
             } else {
                 if ($local_inventory) {
-                    $xml_googleshopping = $this->getLocalInventoryItemXML($product, $lang, $id_curr, $id_shop);
+                    $xml_googleshopping = $this->getLocalInventoryItemXML($product, $lang, $p, $currency, $id_shop);
                 } else {
-                    $xml_googleshopping = $this->getItemXML($product, $lang, $id_curr, $id_shop);
+                    $xml_googleshopping = $this->getItemXML($product, $lang, $p, $currency, $id_shop, $languages, $tailleTabLang);
                 }
                 fwrite($googleshoppingfile, $xml_googleshopping);
             }
@@ -731,29 +771,28 @@ trait FeedGeneratorTrait
      *
      * @param array $product Product data array
      * @param array $lang Language configuration with id_lang
-     * @param int $id_curr Currency ID for pricing
+     * @param Product $p Already-hydrated Product object for this row (built once by generateFile())
+     * @param Currency $currency Currency for this file (built once by generateFile())
      * @param int $id_shop Shop ID for context
      * @param int|bool $combination Product attribute combination ID (false if simple product)
      * @return string Generated XML item element or empty string if skipped
      */
-    private function getLocalInventoryItemXML($product, $lang, $id_curr, $id_shop, $combination = false)
+    private function getLocalInventoryItemXML($product, $lang, Product $p, Currency $currency, $id_shop, $combination = false)
     {
         $xml_googleshopping = '';
         $id_lang = (int) $lang['id_lang'];
-        $p = new Product($product['id_product'], true, $id_lang, $id_shop, $this->context);
         if (!$combination) {
             $product['quantity'] = StockAvailable::getQuantityAvailableByProduct($product['id_product'], 0, $id_shop);
         } else {
             $product['quantity'] = StockAvailable::getQuantityAvailableByProduct($product['id_product'], $combination, $id_shop);
         }
         $xml_googleshopping .= '<item>' . "\n";
-        $xml_googleshopping .= '<g:store_code>' . $this->module_conf['store_code'] . '</g:store_code>' . "\n";
+        $xml_googleshopping .= '<g:store_code><![CDATA[' . $this->cdataSafe($this->module_conf['store_code']) . ']]></g:store_code>' . "\n";
         $xml_googleshopping .= '<g:id>' . $product['gid'] . '</g:id>' . "\n";
         // Product quantity & availability
         $xml_googleshopping .= $this->buildAvailabilityXml($product, $p);
 
         // Price(s)
-        $currency = new Currency((int) $id_curr);
         $xml_googleshopping .= $this->buildPriceXml($product, $p, $currency, $combination);
 
         $xml_googleshopping .= '</item>' . "\n\n";
@@ -788,23 +827,23 @@ trait FeedGeneratorTrait
      *
      * @param array $product Product data from database query
      * @param array $lang Language configuration with id_lang and iso_code
-     * @param int $id_curr Currency ID for pricing conversion
+     * @param Product $p Already-hydrated Product object for this row (built once by generateFile())
+     * @param Currency $currency Currency for this file (built once by generateFile())
      * @param int $id_shop Shop ID for product scope
+     * @param array $languages All shop languages (built once by generateFile(), used for the image-fallback lookup below)
+     * @param int $tailleTabLang count($languages), passed alongside it to avoid recomputing per item
      * @param int|bool $combination Product attribute combination ID (false if simple product)
      * @return string Generated XML item element or empty string if product is filtered out
      */
-    private function getItemXML($product, $lang, $id_curr, $id_shop, $combination = false)
+    private function getItemXML($product, $lang, Product $p, Currency $currency, $id_shop, array $languages, $tailleTabLang, $combination = false)
     {
         $xml_googleshopping = '';
         $id_lang = (int) $lang['id_lang'];
         $title_limit = self::TITLE_MAX_LENGTH;
         $short_title_limit = self::SHORT_TITLE_MAX_LENGTH;
         $description_limit = self::DESCRIPTION_MAX_LENGTH;
-        $languages = Language::getLanguages();
-        $tailleTabLang = count($languages);
         $this->context->language->id = $id_lang;
         $this->context->shop->id = $id_shop;
-        $p = new Product($product['id_product'], true, $id_lang, $id_shop, $this->context);
 
         // Get module configuration for this shop
         if (!$combination) {
@@ -949,16 +988,15 @@ trait FeedGeneratorTrait
         $xml_googleshopping .= $this->buildAvailabilityXml($product, $p);
 
         // Price(s)
-        $currency = new Currency((int) $id_curr);
         $xml_googleshopping .= $this->buildPriceXml($product, $p, $currency, $combination);
 
         $identifier_exists = 0;
         // GTIN (EAN, UPC, JAN, ISBN)
         if (!empty($product['ean13'])) {
-            $xml_googleshopping .= '<g:gtin>' . $product['ean13'] . '</g:gtin>' . "\n";
+            $xml_googleshopping .= '<g:gtin><![CDATA[' . $this->cdataSafe($product['ean13']) . ']]></g:gtin>' . "\n";
             ++$identifier_exists;
         } elseif (!empty($product['upc'])) {
-            $xml_googleshopping .= '<g:gtin>' . $product['upc'] . '</g:gtin>' . "\n";
+            $xml_googleshopping .= '<g:gtin><![CDATA[' . $this->cdataSafe($product['upc']) . ']]></g:gtin>' . "\n";
             ++$identifier_exists;
         }
 
@@ -974,10 +1012,10 @@ trait FeedGeneratorTrait
         }
 
         if ($this->module_conf['mpn_type'] == 'reference' && !empty($product['reference'])) {
-            $xml_googleshopping .= '<g:mpn><![CDATA[' . $product['reference'] . ']]></g:mpn>' . "\n";
+            $xml_googleshopping .= '<g:mpn><![CDATA[' . $this->cdataSafe($product['reference']) . ']]></g:mpn>' . "\n";
             ++$identifier_exists;
         } elseif ($this->module_conf['mpn_type'] == 'supplier_reference' && !empty($product['supplier_reference'])) {
-            $xml_googleshopping .= '<g:mpn><![CDATA[' . $product['supplier_reference'] . ']]></g:mpn>' . "\n";
+            $xml_googleshopping .= '<g:mpn><![CDATA[' . $this->cdataSafe($product['supplier_reference']) . ']]></g:mpn>' . "\n";
             ++$identifier_exists;
         }
 
@@ -1073,18 +1111,17 @@ trait FeedGeneratorTrait
         // Shipping
         if ($product['is_virtual']) {
             $xml_googleshopping .= '<g:shipping>' . "\n";
-            $xml_googleshopping .= "\t" . '<g:country>' . $this->module_conf['shipping_country'] . '</g:country>' . "\n";
+            $xml_googleshopping .= "\t" . '<g:country><![CDATA[' . $this->cdataSafe($this->module_conf['shipping_country']) . ']]></g:country>' . "\n";
             $xml_googleshopping .= "\t" . '<g:service>Standard</g:service>' . "\n";
             $xml_googleshopping .= "\t" . '<g:price>' . Tools::convertPriceFull(0, null, $currency) . ' ' . $currency->iso_code . '</g:price>' . "\n";
             $xml_googleshopping .= '</g:shipping>' . "\n";
         } elseif ($this->module_conf['shipping_mode'] == 'fixed') {
             $xml_googleshopping .= '<g:shipping>' . "\n";
-            $xml_googleshopping .= "\t" . '<g:country>' . $this->module_conf['shipping_country'] . '</g:country>' . "\n";
+            $xml_googleshopping .= "\t" . '<g:country><![CDATA[' . $this->cdataSafe($this->module_conf['shipping_country']) . ']]></g:country>' . "\n";
             $xml_googleshopping .= "\t" . '<g:service>Standard</g:service>' . "\n";
             $xml_googleshopping .= "\t" . '<g:price>' . Tools::convertPriceFull($this->module_conf['shipping_price'], null, $currency) . ' ' . $currency->iso_code . '</g:price>' . "\n";
             $xml_googleshopping .= '</g:shipping>' . "\n";
         } elseif ($this->module_conf['shipping_mode'] == 'full' && count($this->module_conf['shipping_countries[]'])) {
-            $this->id_address_delivery = 0;
             $countries = [];
             if (in_array('all', $this->module_conf['shipping_countries[]'])) {
                 $countries = Country::getCountries($this->context->language->id, true);
@@ -1105,7 +1142,13 @@ trait FeedGeneratorTrait
             $shipping_free_weight = isset($this->free_shipping['PS_SHIPPING_FREE_WEIGHT']) ? $this->free_shipping['PS_SHIPPING_FREE_WEIGHT'] : 0;
 
             foreach ($zones as $id_zone => $countries) {
-                $carriers = Carrier::getCarriers($this->context->language->id, true, false, $id_zone, null, 5);
+                // The carrier list for a given zone is the same for every
+                // product in this run; only the per-product filtering below
+                // (size/weight, excluded carriers) actually varies.
+                if (!array_key_exists($id_zone, $this->carriersByZoneCache)) {
+                    $this->carriersByZoneCache[$id_zone] = Carrier::getCarriers($this->context->language->id, true, false, $id_zone, null, 5);
+                }
+                $carriers = $this->carriersByZoneCache[$id_zone];
                 $carriers_excluded = $this->module_conf['carriers_excluded[]'];
                 $carriers_product = $p->getCarriers();
 

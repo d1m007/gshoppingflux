@@ -25,6 +25,51 @@ if (!defined('_PS_VERSION_')) {
 
 class GCategories
 {
+    /** Safety cap on getPath() recursion depth, far beyond any real category tree */
+    const MAX_PATH_DEPTH = 50;
+
+    /**
+     * Per-request cache of loaded Category objects, keyed by
+     * "id_category-id_lang-id_shop". getPath() walks the same ancestor
+     * chain repeatedly (once per exported product sharing a category),
+     * so memoizing the Category lookup avoids re-querying the same row.
+     *
+     * @var array<string, Category>
+     */
+    private static $categoryCache = [];
+
+    /**
+     * Load a Category, reusing a previously loaded instance for the same
+     * (id_category, id_lang, id_shop) within this request/process.
+     *
+     * @param int $id_category
+     * @param int $id_lang
+     * @param int $id_shop
+     * @return Category
+     */
+    private static function loadCategory($id_category, $id_lang, $id_shop)
+    {
+        $key = $id_category . '-' . $id_lang . '-' . $id_shop;
+
+        if (!array_key_exists($key, self::$categoryCache)) {
+            self::$categoryCache[$key] = new Category((int) $id_category, (int) $id_lang, (int) $id_shop);
+        }
+
+        return self::$categoryCache[$key];
+    }
+
+    /**
+     * Clear the Category cache used by getPath(). PrestaShop requests and
+     * CLI cron runs are each their own process, so production never needs
+     * this; it exists for test isolation between test cases sharing one
+     * PHP process.
+     *
+     * @return void
+     */
+    public static function resetCache()
+    {
+        self::$categoryCache = [];
+    }
 
     /**
      * Retrieve all Google Shopping categories with related data
@@ -349,14 +394,22 @@ class GCategories
      * @param int $id_lang Language ID for category name translation
      * @param int $id_shop Shop ID for category scope
      * @param int $id_root Root category ID where recursion should stop
+     * @param int $depth Current recursion depth (internal use, leave at default on initial call)
      *
      * @return string Formatted breadcrumb path (e.g., "Electronics > Phones")
      *                Returns empty string if category is root or inactive
      */
-    public static function getPath($id_category, $path, $id_lang, $id_shop, $id_root)
+    public static function getPath($id_category, $path, $id_lang, $id_shop, $id_root, $depth = 0)
     {
+        // Safety net against a corrupted id_parent chain that never reaches
+        // the root (orphaned category, bad import): stop instead of
+        // recursing until the stack/memory limit is hit.
+        if ($depth > self::MAX_PATH_DEPTH) {
+            return $path;
+        }
+
         // Load category object with language and shop context
-        $category = new Category((int) $id_category, (int) $id_lang, (int) $id_shop);
+        $category = self::loadCategory($id_category, $id_lang, $id_shop);
 
         // Stop recursion if: category is invalid, is root, or is inactive
         if (!Validate::isLoadedObject($category) || $category->id_category == $id_root || $category->active == 0) {
@@ -375,6 +428,6 @@ class GCategories
         }
 
         // Recursive call: traverse to parent category and continue building path
-        return self::getPath((int) $category->id_parent, $path, (int) $id_lang, (int) $id_shop, (int) $id_root);
+        return self::getPath((int) $category->id_parent, $path, (int) $id_lang, (int) $id_shop, (int) $id_root, $depth + 1);
     }
 }

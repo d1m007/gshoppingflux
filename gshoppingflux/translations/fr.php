@@ -176,3 +176,5 @@ $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_399b0bb2f233c56367add52feb5a3
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_101ab01a6b76380d917bab8f63962953'] = 'Le code de votre magasin';
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_34e80a799d144cfe4af46815e103f017'] = 'Avis';
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_ce2f716c73c818e48a97ffc1441d389c'] = 'avis exportés';
+$_MODULE['<{gshoppingflux}prestashop>gshoppingflux_091d7db32ecef3954e0028a18eaa4443'] = 'Jeton de sécurité CRON';
+$_MODULE['<{gshoppingflux}prestashop>gshoppingflux_b90c33f41b0c65d510aaa20761ffe58f'] = 'Facultatif. Si renseigné, cron.php exige « &token=<cette valeur> » pour s\'exécuter, empêchant quiconque de déclencher une régénération du flux. Laissez vide pour garder cron.php ouvert comme avant.';

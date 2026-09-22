@@ -155,3 +155,5 @@ $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_702d061665a3a9bcabeaa07634b89
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_be5d5d37542d75f93a87094459f76678'] = 'und';
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_8eddcc44b4d68603564af379deea53ce'] = 'nicht exportierte Produkte (nicht verfügbar)';
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_29de2b388c4dbba0f83de46d285d8a08'] = 'Beispiel Google-Kategorie > Google-Unterkategorie > usw.';
+$_MODULE['<{gshoppingflux}prestashop>gshoppingflux_091d7db32ecef3954e0028a18eaa4443'] = 'CRON-Sicherheitstoken';
+$_MODULE['<{gshoppingflux}prestashop>gshoppingflux_b90c33f41b0c65d510aaa20761ffe58f'] = 'Optional. Wenn gesetzt, verlangt cron.php „&token=<dieser Wert>“, um ausgeführt zu werden, damit niemand sonst eine Feed-Regenerierung auslösen kann. Leer lassen, um cron.php wie bisher offen zu halten.';
