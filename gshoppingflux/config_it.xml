@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+	<name>gshoppingflux</name>
+	<displayName><![CDATA[Google Shopping Flux]]></displayName>
+	<version><![CDATA[1.7.9]]></version>
+	<description><![CDATA[Esporta i tuoi prodotti su Google Merchant Center, facilmente.]]></description>
+	<author><![CDATA[Dim00z]]></author>
+	<tab><![CDATA[smart_shopping]]></tab>
+	<is_configurable>1</is_configurable>
+	<need_instance>0</need_instance>
+	<limited_countries></limited_countries>
+</module>
