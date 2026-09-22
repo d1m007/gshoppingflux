@@ -204,7 +204,9 @@ class GCategories
             ]
         );
 
-        // Insert language-specific translations for Google category names
+        // Insert language-specific translations for Google category names.
+        // Db::insert() already escapes scalar array values, so no explicit
+        // pSQL() call is needed here (kept consistent with the fields above).
         foreach ($gcateg as $id_lang => $categ) {
             Db::getInstance()->insert(
                 'gshoppingflux_lang',
@@ -212,7 +214,7 @@ class GCategories
                     'id_gcategory' => (int) $id_category,
                     'id_lang' => (int) $id_lang,
                     'id_shop' => (int) $id_shop,
-                    'gcategory' => pSQL($categ),
+                    'gcategory' => $categ,
                 ]
             );
         }
@@ -269,12 +271,13 @@ class GCategories
             'id_gcategory = ' . (int) $id_category . ' AND id_shop=' . (int) $id_shop
         );
 
-        // Update language-specific translations for each language
+        // Update language-specific translations for each language.
+        // Db::update() already escapes scalar array values.
         foreach ($gcateg as $id_lang => $categ) {
             Db::getInstance()->update(
                 'gshoppingflux_lang',
                 [
-                    'gcategory' => pSQL($categ),
+                    'gcategory' => $categ,
                 ],
                 'id_gcategory = ' . (int) $id_category . ' AND id_lang = ' . (int) $id_lang . ' AND id_shop=' . (int) $id_shop
             );

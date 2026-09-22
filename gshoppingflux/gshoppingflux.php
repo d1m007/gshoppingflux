@@ -42,6 +42,68 @@ class GShoppingFlux extends Module
     /** HTML entity encoding flags for XML */
     const REPLACE_FLAGS = ENT_COMPAT;
 
+    /** Google Shopping <g:title> maximum length */
+    const TITLE_MAX_LENGTH = 150;
+
+    /** Google Shopping <g:short_title> maximum length */
+    const SHORT_TITLE_MAX_LENGTH = 65;
+
+    /** Google Shopping <g:description> maximum length */
+    const DESCRIPTION_MAX_LENGTH = 4990;
+
+    /** Maximum number of image_link/additional_image_link nodes per item */
+    const MAX_PRODUCT_IMAGES = 10;
+
+    /**
+     * Default value for every GS_* module setting, seeded on install and
+     * removed on full uninstall. Keeping a single source of truth here
+     * avoids the two lists drifting apart.
+     */
+    const CONFIG_DEFAULTS = [
+        'GS_PRODUCT_TYPE' => '',
+        'GS_DESCRIPTION' => 'short',
+        'GS_SHIPPING_MODE' => 'fixed',
+        'GS_SHIPPING_PRICE_FIXED' => '1',
+        'GS_SHIPPING_PRICE' => '0.00',
+        'GS_SHIPPING_COUNTRY' => 'UK',
+        'GS_SHIPPING_COUNTRIES' => '0',
+        'GS_CARRIERS_EXCLUDED' => '0',
+        'GS_IMG_TYPE' => 'large_default',
+        'GS_MPN_TYPE' => 'reference',
+        'GS_GENDER' => '',
+        'GS_AGE_GROUP' => '',
+        'GS_ATTRIBUTES' => '0',
+        'GS_COLOR' => '',
+        'GS_MATERIAL' => '',
+        'GS_PATTERN' => '',
+        'GS_SIZE' => '',
+        'GS_EXPORT_MIN_PRICE' => '0.00',
+        'GS_NO_GTIN' => '1',
+        'GS_SHIPPING_DIMENSION' => '1',
+        'GS_NO_BRAND' => '1',
+        'GS_ID_EXISTS_TAG' => '1',
+        'GS_EXPORT_NAP' => '0',
+        'GS_QUANTITY' => '1',
+        'GS_FEATURED_PRODUCTS' => '1',
+        'GS_GEN_FILE_IN_ROOT' => '1',
+        'GS_FILE_PREFIX' => '',
+        'GS_LOCAL_SHOP_CODE' => '',
+    ];
+
+    /**
+     * Valid values for form fields backed by a fixed <select>/<switch>
+     * option list, used both to render the option list and to whitelist
+     * incoming POST data in the corresponding save*() method. An empty
+     * string means "inherit from parent"/"no override" where applicable.
+     */
+    const VALID_CONDITIONS = ['', 'new', 'used', 'refurbished'];
+    const VALID_AVAILABILITY = ['', 'in stock', 'preorder'];
+    const VALID_GENDERS = ['', 'male', 'female', 'unisex'];
+    const VALID_AGE_GROUPS = ['', 'newborn', 'infant', 'toddler', 'kids', 'adult'];
+    const VALID_DESCRIPTIONS = ['short', 'long', 'short+long', 'meta'];
+    const VALID_SHIPPING_MODES = ['none', 'fixed', 'full'];
+    const VALID_MPN_TYPES = ['reference', 'supplier_reference'];
+
     // ============================================================
     // CLASS PROPERTIES
     // ============================================================
@@ -196,38 +258,7 @@ class GShoppingFlux extends Module
      */
     private function initializeConfigurationValues($shop_id, $shop_group_id)
     {
-        $configs = [
-            'GS_PRODUCT_TYPE' => '',
-            'GS_DESCRIPTION' => 'short',
-            'GS_SHIPPING_MODE' => 'fixed',
-            'GS_SHIPPING_PRICE_FIXED' => '1',
-            'GS_SHIPPING_PRICE' => '0.00',
-            'GS_SHIPPING_COUNTRY' => 'UK',
-            'GS_SHIPPING_COUNTRIES' => '0',
-            'GS_CARRIERS_EXCLUDED' => '0',
-            'GS_IMG_TYPE' => 'large_default',
-            'GS_MPN_TYPE' => 'reference',
-            'GS_GENDER' => '',
-            'GS_AGE_GROUP' => '',
-            'GS_ATTRIBUTES' => '0',
-            'GS_COLOR' => '',
-            'GS_MATERIAL' => '',
-            'GS_PATTERN' => '',
-            'GS_SIZE' => '',
-            'GS_EXPORT_MIN_PRICE' => '0.00',
-            'GS_NO_GTIN' => '1',
-            'GS_SHIPPING_DIMENSION' => '1',
-            'GS_NO_BRAND' => '1',
-            'GS_ID_EXISTS_TAG' => '1',
-            'GS_EXPORT_NAP' => '0',
-            'GS_QUANTITY' => '1',
-            'GS_FEATURED_PRODUCTS' => '1',
-            'GS_GEN_FILE_IN_ROOT' => '1',
-            'GS_FILE_PREFIX' => '',
-            'GS_LOCAL_SHOP_CODE' => '',
-        ];
-
-        foreach ($configs as $key => $value) {
+        foreach (self::CONFIG_DEFAULTS as $key => $value) {
             if (!Configuration::updateValue($key, $value, false, (int) $shop_group_id, (int) $shop_id)) {
                 return false;
             }
@@ -379,36 +410,7 @@ class GShoppingFlux extends Module
             }
 
             // Delete all configuration values
-            $config_keys = [
-                'GS_PRODUCT_TYPE',
-                'GS_DESCRIPTION',
-                'GS_SHIPPING_MODE',
-                'GS_SHIPPING_PRICE_FIXED',
-                'GS_SHIPPING_PRICE',
-                'GS_SHIPPING_COUNTRY',
-                'GS_SHIPPING_COUNTRIES',
-                'GS_CARRIERS_EXCLUDED',
-                'GS_IMG_TYPE',
-                'GS_MPN_TYPE',
-                'GS_GENDER',
-                'GS_AGE_GROUP',
-                'GS_ATTRIBUTES',
-                'GS_COLOR',
-                'GS_MATERIAL',
-                'GS_PATTERN',
-                'GS_SIZE',
-                'GS_EXPORT_MIN_PRICE',
-                'GS_NO_GTIN',
-                'GS_SHIPPING_DIMENSION',
-                'GS_NO_BRAND',
-                'GS_ID_EXISTS_TAG',
-                'GS_EXPORT_NAP',
-                'GS_QUANTITY',
-                'GS_FEATURED_PRODUCTS',
-                'GS_GEN_FILE_IN_ROOT',
-                'GS_FILE_PREFIX',
-                'GS_LOCAL_SHOP_CODE'
-            ];
+            $config_keys = array_keys(self::CONFIG_DEFAULTS);
 
             foreach ($config_keys as $key) {
                 if (!Configuration::deleteByName($key)) {
@@ -679,6 +681,26 @@ class GShoppingFlux extends Module
      * @param int $shop_group_id Shop group ID
      * @return void
      */
+
+    /**
+     * Report the outcome of a Configuration::updateValue() batch: an error
+     * message on failure, or a confirmation plus a feed regeneration on
+     * success. Shared by saveFluxOptions() and saveLocalInventoryOptions().
+     */
+    private function reportSaveResult($updated, $shop_id, $shop_group_id, $local_inventory = false)
+    {
+        if (!$updated) {
+            $shop = new Shop($shop_id);
+            $this->_html .= $this->displayError(sprintf($this->l('Unable to update settings for shop: %s'), $shop->name));
+
+            return;
+        }
+
+        $this->confirm = $this->l('The settings have been updated.');
+        $this->generateXMLFiles(0, $shop_id, $shop_group_id, $local_inventory);
+        $this->_html .= $this->displayConfirmation($this->confirm);
+    }
+
     private function saveFluxOptions($languages, $shop_id, $shop_group_id)
     {
         $updated = true;
@@ -690,18 +712,40 @@ class GShoppingFlux extends Module
             $product_type[$lang['id_lang']] = $product_type_lang[$k];
         }
 
+        // Whitelist incoming values backed by a fixed option list
+        $description = Tools::getValue('description');
+        if (!in_array($description, self::VALID_DESCRIPTIONS, true)) {
+            $description = 'short';
+        }
+        $shipping_mode = Tools::getValue('shipping_mode');
+        if (!in_array($shipping_mode, self::VALID_SHIPPING_MODES, true)) {
+            $shipping_mode = 'none';
+        }
+        $mpn_type = Tools::getValue('mpn_type');
+        if (!in_array($mpn_type, self::VALID_MPN_TYPES, true)) {
+            $mpn_type = 'reference';
+        }
+        $gender = Tools::getValue('gender');
+        if (!in_array($gender, self::VALID_GENDERS, true)) {
+            $gender = '';
+        }
+        $age_group = Tools::getValue('age_group');
+        if (!in_array($age_group, self::VALID_AGE_GROUPS, true)) {
+            $age_group = '';
+        }
+
         // Update all configuration values
         $updated &= Configuration::updateValue('GS_PRODUCT_TYPE', $product_type, false, (int) $shop_group_id, (int) $shop_id);
-        $updated &= Configuration::updateValue('GS_DESCRIPTION', Tools::getValue('description'), false, (int) $shop_group_id, (int) $shop_id);
-        $updated &= Configuration::updateValue('GS_SHIPPING_MODE', Tools::getValue('shipping_mode'), false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_DESCRIPTION', $description, false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_SHIPPING_MODE', $shipping_mode, false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_SHIPPING_PRICE', (float) Tools::getValue('shipping_price'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_SHIPPING_COUNTRY', Tools::getValue('shipping_country'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_SHIPPING_COUNTRIES', ArrayHelper::safeImplode((array) Tools::getValue('shipping_countries')), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_CARRIERS_EXCLUDED', ArrayHelper::safeImplode((array) Tools::getValue('carriers_excluded')), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_IMG_TYPE', Tools::getValue('img_type'), false, (int) $shop_group_id, (int) $shop_id);
-        $updated &= Configuration::updateValue('GS_MPN_TYPE', Tools::getValue('mpn_type'), false, (int) $shop_group_id, (int) $shop_id);
-        $updated &= Configuration::updateValue('GS_GENDER', Tools::getValue('gender'), false, (int) $shop_group_id, (int) $shop_id);
-        $updated &= Configuration::updateValue('GS_AGE_GROUP', Tools::getValue('age_group'), false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_MPN_TYPE', $mpn_type, false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_GENDER', $gender, false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_AGE_GROUP', $age_group, false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_ATTRIBUTES', Tools::getValue('export_attributes'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_COLOR', ArrayHelper::safeImplode((array) Tools::getValue('color')), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_MATERIAL', ArrayHelper::safeImplode((array) Tools::getValue('material')), false, (int) $shop_group_id, (int) $shop_id);
@@ -719,14 +763,7 @@ class GShoppingFlux extends Module
         $updated &= Configuration::updateValue('GS_FILE_PREFIX', trim(Tools::getValue('file_prefix')), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_AUTOEXPORT_ON_SAVE', (bool) Tools::getValue('autoexport_on_save'), false, (int) $shop_group_id, (int) $shop_id);
 
-        if (!$updated) {
-            $shop = new Shop($shop_id);
-            $this->_html .= $this->displayError(sprintf($this->l('Unable to update settings for shop: %s'), $shop->name));
-        } else {
-            $this->confirm = $this->l('The settings have been updated.');
-            $this->generateXMLFiles(0, $shop_id, $shop_group_id);
-            $this->_html .= $this->displayConfirmation($this->confirm);
-        }
+        $this->reportSaveResult($updated, $shop_id, $shop_group_id);
     }
 
     /**
@@ -740,14 +777,7 @@ class GShoppingFlux extends Module
     {
         $updated = Configuration::updateValue('GS_LOCAL_SHOP_CODE', Tools::getValue('store_code'), false, (int) $shop_group_id, (int) $shop_id);
 
-        if (!$updated) {
-            $shop = new Shop($shop_id);
-            $this->_html .= $this->displayError(sprintf($this->l('Unable to update settings for shop: %s'), $shop->name));
-        } else {
-            $this->confirm = $this->l('The settings have been updated.');
-            $this->generateXMLFiles(0, $shop_id, $shop_group_id, true);
-            $this->_html .= $this->displayConfirmation($this->confirm);
-        }
+        $this->reportSaveResult($updated, $shop_id, $shop_group_id, true);
     }
 
     /**
@@ -762,9 +792,21 @@ class GShoppingFlux extends Module
         $id_gcategory = (int) Tools::getValue('id_gcategory', 0);
         $export = (int) Tools::getValue('export', 0);
         $condition = Tools::getValue('condition');
+        if (!in_array($condition, self::VALID_CONDITIONS, true)) {
+            $condition = '';
+        }
         $availability = Tools::getValue('availability');
+        if (!in_array($availability, self::VALID_AVAILABILITY, true)) {
+            $availability = '';
+        }
         $gender = Tools::getValue('gender');
+        if (!in_array($gender, self::VALID_GENDERS, true)) {
+            $gender = '';
+        }
         $age_group = Tools::getValue('age_group');
+        if (!in_array($age_group, self::VALID_AGE_GROUPS, true)) {
+            $age_group = '';
+        }
         $color = ArrayHelper::safeImplode((array) Tools::getValue('color'));
         $material = ArrayHelper::safeImplode((array) Tools::getValue('material'));
         $pattern = ArrayHelper::safeImplode((array) Tools::getValue('pattern'));
@@ -1016,7 +1058,7 @@ class GShoppingFlux extends Module
         }
 
         foreach ($languages as $i => $lang) {
-            $currencies = ArrayHelper::explodeAndFilter($lang['id_currency']);
+            $currencies = ArrayHelper::safeExplode($lang['id_currency']);
             foreach ($currencies as $curr) {
                 $currency = new Currency($curr);
                 if (Configuration::get('GS_GEN_FILE_IN_ROOT', 0, $shop_group_id, $shop_id) == 1) {
@@ -1109,6 +1151,55 @@ class GShoppingFlux extends Module
 			LEFT JOIN ' . _DB_PREFIX_ . 'feature_value_lang fv ON (fv.id_feature_value = fp.id_feature_value AND fv.id_lang = fl.id_lang)
 			WHERE fp.id_product = ' . (int) $id_product . ' AND fl.id_lang = ' . (int) $id_lang . ' AND fs.id_shop = ' . (int) $id_shop . '
 			ORDER BY fp.id_feature ASC');
+    }
+
+    /**
+     * Build a HelperForm 'switch' (Enabled/Disabled) field definition.
+     *
+     * Collapses the boilerplate repeated across every boolean option in
+     * renderForm()/renderCategForm()/renderLangForm() into one place.
+     *
+     * @param string $name Field name
+     * @param string $label Field label
+     * @param string|null $desc Optional field description
+     * @param array $options Optional overrides: 'on_id'/'off_id' for the
+     *                       'values' ids (default active_on/active_off),
+     *                       'disabled' => true to render it read-only
+     * @return array HelperForm field definition
+     */
+    private function boolSwitchField($name, $label, $desc = null, array $options = [])
+    {
+        $onId = isset($options['on_id']) ? $options['on_id'] : 'active_on';
+        $offId = isset($options['off_id']) ? $options['off_id'] : 'active_off';
+
+        $field = [
+            'type' => 'switch',
+            'label' => $label,
+            'name' => $name,
+            'is_bool' => true,
+            'values' => [
+                [
+                    'id' => $onId,
+                    'value' => 1,
+                    'label' => $this->l('Enabled'),
+                ],
+                [
+                    'id' => $offId,
+                    'value' => 0,
+                    'label' => $this->l('Disabled'),
+                ],
+            ],
+        ];
+
+        if ($desc !== null) {
+            $field['desc'] = $desc;
+        }
+
+        if (!empty($options['disabled'])) {
+            $field['disabled'] = true;
+        }
+
+        return $field;
     }
 
     /**
@@ -1413,181 +1504,43 @@ class GShoppingFlux extends Module
                         'desc' => $this->l('Hold [Ctrl] key pressed to select multiple size features.'),
                     ],
                     // Export attributes toggle
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Export attributes combinations'),
-                        'name' => 'export_attributes',
-                        'is_bool' => true,
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                        'desc' => $this->l('If checked, one product is exported for each attributes combination. Products should have at least one attribute filled in order to be exported as combinations.'),
-                    ],
+                    $this->boolSwitchField(
+                        'export_attributes',
+                        $this->l('Export attributes combinations'),
+                        $this->l('If checked, one product is exported for each attributes combination. Products should have at least one attribute filled in order to be exported as combinations.')
+                    ),
                     // GTIN export toggle
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Export products with no GTIN code'),
-                        'name' => 'no_gtin',
-                        'is_bool' => true,
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                        'desc' => $this->l('Allow export of products, that no not have a GTIN code (EAN13/UPC)'),
-                    ],
+                    $this->boolSwitchField(
+                        'no_gtin',
+                        $this->l('Export products with no GTIN code'),
+                        $this->l('Allow export of products, that no not have a GTIN code (EAN13/UPC)')
+                    ),
                     // Shipping dimensions export toggle
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Export products shipping dimensions'),
-                        'name' => 'shipping_dimension',
-                        'is_bool' => true,
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                        'desc' => $this->l('Allow export of dimension for each products, if typed in product details'),
-                    ],
+                    $this->boolSwitchField(
+                        'shipping_dimension',
+                        $this->l('Export products shipping dimensions'),
+                        $this->l('Allow export of dimension for each products, if typed in product details')
+                    ),
                     // No brand products toggle
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Export products with no brand'),
-                        'name' => 'no_brand',
-                        'is_bool' => true,
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                        'desc' => $this->l('Allow export of products, that no not have a brand (Manufacturer)'),
-                    ],
+                    $this->boolSwitchField(
+                        'no_brand',
+                        $this->l('Export products with no brand'),
+                        $this->l('Allow export of products, that no not have a brand (Manufacturer)')
+                    ),
                     // Identifier exists tag toggle
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Set <identifier_exists> tag to FALSE'),
-                        'name' => 'id_exists_tag',
-                        'is_bool' => true,
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                        'desc' => $this->l('If your product is new (which you submit through the condition attribute) and it doesn’t have a gtin and brand or mpn and brand.') . ' <a href="https://support.google.com/merchants/answer/6324478?hl=en" target="_blank">' . $this->l('identifier_exists: Definition') . '</a>',
-                    ],
+                    $this->boolSwitchField(
+                        'id_exists_tag',
+                        $this->l('Set <identifier_exists> tag to FALSE'),
+                        $this->l('If your product is new (which you submit through the condition attribute) and it doesn’t have a gtin and brand or mpn and brand.') . ' <a href="https://support.google.com/merchants/answer/6324478?hl=en" target="_blank">' . $this->l('identifier_exists: Definition') . '</a>'
+                    ),
                     // Non-available products export toggle
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Export non-available products'),
-                        'name' => 'export_nap',
-                        'is_bool' => true,
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                    ],
+                    $this->boolSwitchField('export_nap', $this->l('Export non-available products')),
                     // Quantity export toggle
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Export product quantity'),
-                        'name' => 'quantity',
-                        'is_bool' => true,
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                    ],
+                    $this->boolSwitchField('quantity', $this->l('Export product quantity')),
                     // On sale indicator export toggle
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Export "On Sale" indication'),
-                        'name' => 'featured_products',
-                        'is_bool' => true,
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                    ],
+                    $this->boolSwitchField('featured_products', $this->l('Export "On Sale" indication')),
                     // File generation location toggle
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Generate the files to the root of the site'),
-                        'name' => 'gen_file_in_root',
-                        'is_bool' => true,
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                    ],
+                    $this->boolSwitchField('gen_file_in_root', $this->l('Generate the files to the root of the site')),
                     // File prefix field
                     [
                         'type' => 'text',
@@ -1597,25 +1550,11 @@ class GShoppingFlux extends Module
                         'desc' => $this->l('Allows you to prefix feed filename. Makes it a little harder for other to guess your feed names'),
                     ],
                     // Auto-export toggle
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Automatic export on saves?'),
-                        'name' => 'autoexport_on_save',
-                        'is_bool' => true,
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                        'desc' => $this->l('When disabled, you have to "Save & Export" manually or run the CRON job, to generate new files.'),
-                    ],
+                    $this->boolSwitchField(
+                        'autoexport_on_save',
+                        $this->l('Automatic export on saves?'),
+                        $this->l('When disabled, you have to "Save & Export" manually or run the CRON job, to generate new files.')
+                    ),
                 ],
                 'description' => $form_desc,
                 'submit' => [
@@ -1781,17 +1720,17 @@ class GShoppingFlux extends Module
         $shipping_price_fixed &= (bool) Configuration::get('GS_SHIPPING_PRICE_FIXED', 0, $shop_group_id, $shop_id);
         $shipping_price = (float) Configuration::get('GS_SHIPPING_PRICE', 0, $shop_group_id, $shop_id);
         $shipping_country = Configuration::get('GS_SHIPPING_COUNTRY', 0, $shop_group_id, $shop_id);
-        $shipping_countries = ArrayHelper::explodeAndFilter(Configuration::get('GS_SHIPPING_COUNTRIES', 0, $shop_group_id, $shop_id));
-        $carriers_excluded = ArrayHelper::explodeAndFilter(Configuration::get('GS_CARRIERS_EXCLUDED', 0, $shop_group_id, $shop_id));
+        $shipping_countries = ArrayHelper::safeExplode(Configuration::get('GS_SHIPPING_COUNTRIES', 0, $shop_group_id, $shop_id));
+        $carriers_excluded = ArrayHelper::safeExplode(Configuration::get('GS_CARRIERS_EXCLUDED', 0, $shop_group_id, $shop_id));
         $img_type = Configuration::get('GS_IMG_TYPE', 0, $shop_group_id, $shop_id);
         $mpn_type = Configuration::get('GS_MPN_TYPE', 0, $shop_group_id, $shop_id);
         $gender = Configuration::get('GS_GENDER', 0, $shop_group_id, $shop_id);
         $age_group = Configuration::get('GS_AGE_GROUP', 0, $shop_group_id, $shop_id);
         $export_attributes = Configuration::get('GS_ATTRIBUTES', 0, $shop_group_id, $shop_id);
-        $color = ArrayHelper::explodeAndFilter(Configuration::get('GS_COLOR', 0, $shop_group_id, $shop_id));
-        $material = ArrayHelper::explodeAndFilter(Configuration::get('GS_MATERIAL', 0, $shop_group_id, $shop_id));
-        $pattern = ArrayHelper::explodeAndFilter(Configuration::get('GS_PATTERN', 0, $shop_group_id, $shop_id));
-        $size = ArrayHelper::explodeAndFilter(Configuration::get('GS_SIZE', 0, $shop_group_id, $shop_id));
+        $color = ArrayHelper::safeExplode(Configuration::get('GS_COLOR', 0, $shop_group_id, $shop_id));
+        $material = ArrayHelper::safeExplode(Configuration::get('GS_MATERIAL', 0, $shop_group_id, $shop_id));
+        $pattern = ArrayHelper::safeExplode(Configuration::get('GS_PATTERN', 0, $shop_group_id, $shop_id));
+        $size = ArrayHelper::safeExplode(Configuration::get('GS_SIZE', 0, $shop_group_id, $shop_id));
         $export_min_price = (float) Configuration::get('GS_EXPORT_MIN_PRICE', 0, $shop_group_id, $shop_id);
         $no_gtin &= (bool) Configuration::get('GS_NO_GTIN', 0, $shop_group_id, $shop_id);
         $shipping_dimension &= (bool) Configuration::get('GS_SHIPPING_DIMENSION', 0, $shop_group_id, $shop_id);
@@ -2006,23 +1945,7 @@ class GShoppingFlux extends Module
                         'desc' => $gcat_desc,
                     ],
                     // Export toggle
-                    [
-                        'type' => 'switch',
-                        'name' => 'export',
-                        'label' => $this->l('Export products from this category'),
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                    ],
+                    $this->boolSwitchField('export', $this->l('Export products from this category')),
                     // Product condition selector
                     [
                         'type' => 'select',
@@ -2215,10 +2138,10 @@ class GShoppingFlux extends Module
             'availability' => ArrayHelper::getValue('availability', isset($gcatavail_edit) ? $gcatavail_edit : ''),
             'gender' => ArrayHelper::getValue('gender', isset($gcatgender_edit) ? $gcatgender_edit : ''),
             'age_group' => ArrayHelper::getValue('age_group', isset($gcatage_edit) ? $gcatage_edit : ''),
-            'color[]' => ArrayHelper::explodeAndFilter(ArrayHelper::getValue('color[]', isset($gcatcolor_edit) ? $gcatcolor_edit : '')),
-            'material[]' => ArrayHelper::explodeAndFilter(ArrayHelper::getValue('material[]', isset($gcatmaterial_edit) ? $gcatmaterial_edit : '')),
-            'pattern[]' => ArrayHelper::explodeAndFilter(ArrayHelper::getValue('pattern[]', isset($gcatpattern_edit) ? $gcatpattern_edit : '')),
-            'size[]' => ArrayHelper::explodeAndFilter(ArrayHelper::getValue('size[]', isset($gcatsize_edit) ? $gcatsize_edit : '')),
+            'color[]' => ArrayHelper::safeExplode(ArrayHelper::getValue('color[]', isset($gcatcolor_edit) ? $gcatcolor_edit : '')),
+            'material[]' => ArrayHelper::safeExplode(ArrayHelper::getValue('material[]', isset($gcatmaterial_edit) ? $gcatmaterial_edit : '')),
+            'pattern[]' => ArrayHelper::safeExplode(ArrayHelper::getValue('pattern[]', isset($gcatpattern_edit) ? $gcatpattern_edit : '')),
+            'size[]' => ArrayHelper::safeExplode(ArrayHelper::getValue('size[]', isset($gcatsize_edit) ? $gcatsize_edit : '')),
         ];
 
         // Initialize Google category names for all languages
@@ -2330,25 +2253,7 @@ class GShoppingFlux extends Module
                         'name' => 'language_code',
                     ],
                     // Active toggle (disabled)
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Enabled'),
-                        'name' => 'active',
-                        'is_bool' => true,
-                        'disabled' => true,
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                    ],
+                    $this->boolSwitchField('active', $this->l('Enabled'), null, ['disabled' => true]),
                     // Currency multi-selector
                     [
                         'type' => 'select',
@@ -2364,25 +2269,12 @@ class GShoppingFlux extends Module
                         'desc' => $this->l('Hold [Ctrl] key pressed to select multiple currencies.'),
                     ],
                     // Tax inclusion toggle
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Prices exported tax included'),
-                        'name' => 'tax_included',
-                        'is_bool' => true,
-                        'values' => [
-                            [
-                                'id' => 'inc_tax',
-                                'value' => 1,
-                                'label' => $this->l('Enabled'),
-                            ],
-                            [
-                                'id' => 'ex_tax',
-                                'value' => 0,
-                                'label' => $this->l('Disabled'),
-                            ],
-                        ],
-                        'desc' => $this->l('If disabled, prices are exported ex tax.'),
-                    ],
+                    $this->boolSwitchField(
+                        'tax_included',
+                        $this->l('Prices exported tax included'),
+                        $this->l('If disabled, prices are exported ex tax.'),
+                        ['on_id' => 'inc_tax', 'off_id' => 'ex_tax']
+                    ),
                 ],
                 'description' => $form_desc,
                 'submit' => [
@@ -2992,11 +2884,13 @@ class GShoppingFlux extends Module
     private function _getOutputFileName($lang, $curr, $shop, $local_inventory = false, $reviews = false)
     {
         $file_prefix = Configuration::get('GS_FILE_PREFIX', '', $this->context->shop->id_shop_group, $this->context->shop->id);
-        if ($file_prefix) {
-            return $file_prefix . '_googleshopping' . ($local_inventory ? '-local-inventory' : ($reviews ? '-reviews' : '')) . '-s' . $shop . (!empty($lang) ? '-' . $lang : '') . (!empty($curr) ? '-' . $curr : '') . '.xml';
-        }
 
-        return 'googleshopping' . ($local_inventory ? '-local-inventory' : ($reviews ? '-reviews' : '')) . '-s' . $shop . (!empty($lang) ? '-' . $lang : '') . (!empty($curr) ? '-' . $curr : '') . '.xml';
+        return ($file_prefix ? $file_prefix . '_' : '') . 'googleshopping'
+            . ($local_inventory ? '-local-inventory' : ($reviews ? '-reviews' : ''))
+            . '-s' . $shop
+            . (!empty($lang) ? '-' . $lang : '')
+            . (!empty($curr) ? '-' . $curr : '')
+            . '.xml';
     }
     /**
      * Get shop meta description
@@ -3117,6 +3011,31 @@ class GShoppingFlux extends Module
      *              - nb_prod_w_attr: Products with attributes
      *              - non_exported_products: Skipped products (unavailable, etc)
      */
+
+    /**
+     * Build the RSS <channel> header (shop title/description/link/image/author)
+     * shared by every <item> in the standard and local inventory feeds.
+     */
+    private function buildFeedHeaderXml($id_lang, $id_shop)
+    {
+        $xml = '<?xml version="1.0" encoding="' . self::CHARSET . '" ?>' . "\n";
+        $xml .= '<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">' . "\n\n";
+        $xml .= '<channel>' . "\n";
+        // Shop name
+        $xml .= '<title><![CDATA[' . $this->shop->name . ']]></title>' . "\n";
+        // Shop description
+        $xml .= '<description><![CDATA[' . $this->getShopDescription($id_lang, $id_shop) . ']]></description>' . "\n";
+        $xml .= '<link href="' . htmlspecialchars($this->uri, self::REPLACE_FLAGS, self::CHARSET, false) . '" rel="alternate" type="text/html"/>' . "\n";
+        $xml .= '<image>' . "\n";
+        $xml .= '<url>' . htmlspecialchars($this->context->link->getMediaLink(_PS_IMG_ . Configuration::get('PS_LOGO')), self::REPLACE_FLAGS, self::CHARSET, false) . '</url>' . "\n";
+        $xml .= '<link>' . htmlspecialchars($this->uri, self::REPLACE_FLAGS, self::CHARSET, false) . '</link>' . "\n";
+        $xml .= '</image>' . "\n";
+        $xml .= '<modified>' . date('Y-m-d') . ' T01:01:01Z</modified>' . "\n";
+        $xml .= '<author>' . "\n" . '<name>' . htmlspecialchars(Configuration::get('PS_SHOP_NAME'), self::REPLACE_FLAGS, self::CHARSET, false) . '</name>' . "\n" . '</author>' . "\n\n";
+
+        return $xml;
+    }
+
     private function generateFile($lang, $id_curr, $id_shop, $local_inventory = false)
     {
         $id_lang = (int) $lang['id_lang'];
@@ -3143,21 +3062,7 @@ class GShoppingFlux extends Module
             $this->shop->name = Configuration::get('PS_SHOP_NAME');
         }
 
-        // Google Shopping XML
-        $xml = '<?xml version="1.0" encoding="' . self::CHARSET . '" ?>' . "\n";
-        $xml .= '<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">' . "\n\n";
-        $xml .= '<channel>' . "\n";
-        // Shop name
-        $xml .= '<title><![CDATA[' . $this->shop->name . ']]></title>' . "\n";
-        // Shop description
-        $xml .= '<description><![CDATA[' . $this->getShopDescription($id_lang, $id_shop) . ']]></description>' . "\n";
-        $xml .= '<link href="' . htmlspecialchars($this->uri, self::REPLACE_FLAGS, self::CHARSET, false) . '" rel="alternate" type="text/html"/>' . "\n";
-        $xml .= '<image>' . "\n";
-        $xml .= '<url>' . htmlspecialchars($this->context->link->getMediaLink(_PS_IMG_ . Configuration::get('PS_LOGO')), self::REPLACE_FLAGS, self::CHARSET, false) . '</url>' . "\n";
-        $xml .= '<link>' . htmlspecialchars($this->uri, self::REPLACE_FLAGS, self::CHARSET, false) . '</link>' . "\n";
-        $xml .= '</image>' . "\n";
-        $xml .= '<modified>' . date('Y-m-d') . ' T01:01:01Z</modified>' . "\n";
-        $xml .= '<author>' . "\n" . '<name>' . htmlspecialchars(Configuration::get('PS_SHOP_NAME'), self::REPLACE_FLAGS, self::CHARSET, false) . '</name>' . "\n" . '</author>' . "\n\n";
+        $xml = $this->buildFeedHeaderXml($id_lang, $id_shop);
 
         $googleshoppingfile = fopen($generate_file_path, 'w');
 
@@ -3399,6 +3304,74 @@ class GShoppingFlux extends Module
      * @param int|bool $combination Product attribute combination ID (false if simple product)
      * @return string Generated XML item element or empty string if skipped
      */
+
+    /**
+     * Build the <g:quantity>/<g:availability> XML for a product.
+     *
+     * Shared between the standard and local inventory feeds: uses the
+     * mapped category's Google availability override when set, otherwise
+     * derives it from PrestaShop's own stock/availability status.
+     */
+    private function buildAvailabilityXml($product, Product $p)
+    {
+        $xml = '';
+
+        if (empty($this->categories_values[$product['category_default']]['gcat_avail'])) {
+            if ($this->module_conf['quantity'] == 1 && $this->ps_stock_management) {
+                $xml .= '<g:quantity>' . $product['quantity'] . '</g:quantity>' . "\n";
+            }
+            if ($this->ps_stock_management) {
+                if ($product['quantity'] > 0 && $product['available_for_order']) {
+                    $xml .= '<g:availability>in stock</g:availability>' . "\n";
+                } elseif ($p->isAvailableWhenOutOfStock((int) $p->out_of_stock) && $product['available_for_order']) {
+                    $xml .= '<g:availability>preorder</g:availability>' . "\n";
+                } else {
+                    $xml .= '<g:availability>out of stock</g:availability>' . "\n";
+                }
+            } else {
+                if ($product['available_for_order']) {
+                    $xml .= '<g:availability>in stock</g:availability>' . "\n";
+                } else {
+                    $xml .= '<g:availability>out of stock</g:availability>' . "\n";
+                }
+            }
+        } else {
+            if ($this->module_conf['quantity'] == 1 && $product['quantity'] > 0 && $this->ps_stock_management) {
+                $xml .= '<g:quantity>' . $product['quantity'] . '</g:quantity>' . "\n";
+            }
+            $xml .= '<g:availability>' . $this->categories_values[$product['category_default']]['gcat_avail'] . '</g:availability>' . "\n";
+        }
+
+        return $xml;
+    }
+
+    /**
+     * Build the <g:price>/<g:sale_price> XML for a product.
+     *
+     * Shared between the standard and local inventory feeds. Also updates
+     * $product['price']/$product['price_without_reduct'] in place, since
+     * getItemXML() reuses those computed values for shipping costs.
+     */
+    private function buildPriceXml(array &$product, Product $p, Currency $currency, $combination)
+    {
+        $use_tax = ($product['tax_included'] ? true : false);
+        $no_tax = (!$use_tax ? true : false);
+        $product['price'] = (float) $p->getPriceStatic($product['id_product'], $use_tax, $combination) * $currency->conversion_rate;
+        $product['price_without_reduct'] = (float) $p->getPriceWithoutReduct($no_tax, $combination) * $currency->conversion_rate;
+        $product['price'] = Tools::ps_round($product['price'], $this->getPriceDisplayPrecision());
+        $product['price_without_reduct'] = Tools::ps_round($product['price_without_reduct'], $this->getPriceDisplayPrecision());
+
+        $xml = '';
+        if ((float) $product['price'] < (float) $product['price_without_reduct']) {
+            $xml .= '<g:price>' . $product['price_without_reduct'] . ' ' . $currency->iso_code . '</g:price>' . "\n";
+            $xml .= '<g:sale_price>' . $product['price'] . ' ' . $currency->iso_code . '</g:sale_price>' . "\n";
+        } else {
+            $xml .= '<g:price>' . $product['price'] . ' ' . $currency->iso_code . '</g:price>' . "\n";
+        }
+
+        return $xml;
+    }
+
     private function getLocalInventoryItemXML($product, $lang, $id_curr, $id_shop, $combination = false)
     {
         $xml_googleshopping = '';
@@ -3413,46 +3386,11 @@ class GShoppingFlux extends Module
         $xml_googleshopping .= '<g:store_code>' . $this->module_conf['store_code'] . '</g:store_code>' . "\n";
         $xml_googleshopping .= '<g:id>' . $product['gid'] . '</g:id>' . "\n";
         // Product quantity & availability
-        if (empty($this->categories_values[$product['category_default']]['gcat_avail'])) {
-            if ($this->module_conf['quantity'] == 1 && $this->ps_stock_management) {
-                $xml_googleshopping .= '<g:quantity>' . $product['quantity'] . '</g:quantity>' . "\n";
-            }
-            if ($this->ps_stock_management) {
-                if ($product['quantity'] > 0 && $product['available_for_order']) {
-                    $xml_googleshopping .= '<g:availability>in stock</g:availability>' . "\n";
-                } elseif ($p->isAvailableWhenOutOfStock((int) $p->out_of_stock) && $product['available_for_order']) {
-                    $xml_googleshopping .= '<g:availability>preorder</g:availability>' . "\n";
-                } else {
-                    $xml_googleshopping .= '<g:availability>out of stock</g:availability>' . "\n";
-                }
-            } else {
-                if ($product['available_for_order']) {
-                    $xml_googleshopping .= '<g:availability>in stock</g:availability>' . "\n";
-                } else {
-                    $xml_googleshopping .= '<g:availability>out of stock</g:availability>' . "\n";
-                }
-            }
-        } else {
-            if ($this->module_conf['quantity'] == 1 && $product['quantity'] > 0 && $this->ps_stock_management) {
-                $xml_googleshopping .= '<g:quantity>' . $product['quantity'] . '</g:quantity>' . "\n";
-            }
-            $xml_googleshopping .= '<g:availability>' . $this->categories_values[$product['category_default']]['gcat_avail'] . '</g:availability>' . "\n";
-        }
+        $xml_googleshopping .= $this->buildAvailabilityXml($product, $p);
 
         // Price(s)
         $currency = new Currency((int) $id_curr);
-        $use_tax = ($product['tax_included'] ? true : false);
-        $no_tax = (!$use_tax ? true : false);
-        $product['price'] = (float) $p->getPriceStatic($product['id_product'], $use_tax, $combination) * $currency->conversion_rate;
-        $product['price_without_reduct'] = (float) $p->getPriceWithoutReduct($no_tax, $combination) * $currency->conversion_rate;
-        $product['price'] = Tools::ps_round($product['price'], $this->getPriceDisplayPrecision());
-        $product['price_without_reduct'] = Tools::ps_round($product['price_without_reduct'], $this->getPriceDisplayPrecision());
-        if ((float) $product['price'] < (float) $product['price_without_reduct']) {
-            $xml_googleshopping .= '<g:price>' . $product['price_without_reduct'] . ' ' . $currency->iso_code . '</g:price>' . "\n";
-            $xml_googleshopping .= '<g:sale_price>' . $product['price'] . ' ' . $currency->iso_code . '</g:sale_price>' . "\n";
-        } else {
-            $xml_googleshopping .= '<g:price>' . $product['price'] . ' ' . $currency->iso_code . '</g:price>' . "\n";
-        }
+        $xml_googleshopping .= $this->buildPriceXml($product, $p, $currency, $combination);
 
         $xml_googleshopping .= '</item>' . "\n\n";
 
@@ -3495,9 +3433,9 @@ class GShoppingFlux extends Module
     {
         $xml_googleshopping = '';
         $id_lang = (int) $lang['id_lang'];
-        $title_limit = 150;
-        $short_title_limit = 65;
-        $description_limit = 4990;
+        $title_limit = self::TITLE_MAX_LENGTH;
+        $short_title_limit = self::SHORT_TITLE_MAX_LENGTH;
+        $description_limit = self::DESCRIPTION_MAX_LENGTH;
         $languages = Language::getLanguages();
         $tailleTabLang = count($languages);
         $this->context->language->id = $id_lang;
@@ -3627,7 +3565,7 @@ class GShoppingFlux extends Module
                 $xml_googleshopping .= '<g:additional_image_link><![CDATA[' . $image . ']]></g:additional_image_link>' . "\n";
             }
             // max images by product
-            if (++$nbimages == 10) {
+            if (++$nbimages == self::MAX_PRODUCT_IMAGES) {
                 break;
             }
         }
@@ -3662,46 +3600,11 @@ class GShoppingFlux extends Module
         $xml_googleshopping .= '<g:google_product_category><![CDATA[' . $this->cdataSafe($product['gcategory']) . ']]></g:google_product_category>' . "\n";
 
         // Product quantity & availability
-        if (empty($this->categories_values[$product['category_default']]['gcat_avail'])) {
-            if ($this->module_conf['quantity'] == 1 && $this->ps_stock_management) {
-                $xml_googleshopping .= '<g:quantity>' . $product['quantity'] . '</g:quantity>' . "\n";
-            }
-            if ($this->ps_stock_management) {
-                if ($product['quantity'] > 0 && $product['available_for_order']) {
-                    $xml_googleshopping .= '<g:availability>in stock</g:availability>' . "\n";
-                } elseif ($p->isAvailableWhenOutOfStock((int) $p->out_of_stock) && $product['available_for_order']) {
-                    $xml_googleshopping .= '<g:availability>preorder</g:availability>' . "\n";
-                } else {
-                    $xml_googleshopping .= '<g:availability>out of stock</g:availability>' . "\n";
-                }
-            } else {
-                if ($product['available_for_order']) {
-                    $xml_googleshopping .= '<g:availability>in stock</g:availability>' . "\n";
-                } else {
-                    $xml_googleshopping .= '<g:availability>out of stock</g:availability>' . "\n";
-                }
-            }
-        } else {
-            if ($this->module_conf['quantity'] == 1 && $product['quantity'] > 0 && $this->ps_stock_management) {
-                $xml_googleshopping .= '<g:quantity>' . $product['quantity'] . '</g:quantity>' . "\n";
-            }
-            $xml_googleshopping .= '<g:availability>' . $this->categories_values[$product['category_default']]['gcat_avail'] . '</g:availability>' . "\n";
-        }
+        $xml_googleshopping .= $this->buildAvailabilityXml($product, $p);
 
         // Price(s)
         $currency = new Currency((int) $id_curr);
-        $use_tax = ($product['tax_included'] ? true : false);
-        $no_tax = (!$use_tax ? true : false);
-        $product['price'] = (float) $p->getPriceStatic($product['id_product'], $use_tax, $combination) * $currency->conversion_rate;
-        $product['price_without_reduct'] = (float) $p->getPriceWithoutReduct($no_tax, $combination) * $currency->conversion_rate;
-        $product['price'] = Tools::ps_round($product['price'], $this->getPriceDisplayPrecision());
-        $product['price_without_reduct'] = Tools::ps_round($product['price_without_reduct'], $this->getPriceDisplayPrecision());
-        if ((float) $product['price'] < (float) $product['price_without_reduct']) {
-            $xml_googleshopping .= '<g:price>' . $product['price_without_reduct'] . ' ' . $currency->iso_code . '</g:price>' . "\n";
-            $xml_googleshopping .= '<g:sale_price>' . $product['price'] . ' ' . $currency->iso_code . '</g:sale_price>' . "\n";
-        } else {
-            $xml_googleshopping .= '<g:price>' . $product['price'] . ' ' . $currency->iso_code . '</g:price>' . "\n";
-        }
+        $xml_googleshopping .= $this->buildPriceXml($product, $p, $currency, $combination);
 
         $identifier_exists = 0;
         // GTIN (EAN, UPC, JAN, ISBN)

@@ -45,21 +45,25 @@ class ArrayHelper
     }
 
     /**
-     * Explode string to array, filter empty values
+     * Explode string to array, dropping empty ('' or null) values
+     *
+     * Uses the same strict emptiness check as safeImplode() so that a
+     * legitimate '0' value survives an implode/explode round-trip instead
+     * of being silently dropped.
      *
      * @param string $string String to explode
      * @param string $delimiter Delimiter
      * @return array Filtered array
      */
-    public static function explodeAndFilter($string, $delimiter = ';')
+    public static function safeExplode($string, $delimiter = ';')
     {
-        if (empty($string)) {
+        if ($string === '' || $string === null) {
             return [];
         }
 
         $array = explode($delimiter, $string);
         return array_filter($array, function ($value) {
-            return !empty($value);
+            return $value !== '' && $value !== null;
         });
     }
 
