@@ -3480,7 +3480,7 @@ class GShoppingFlux extends Module
     {
         $xml_googleshopping = '';
         $id_lang = (int) $lang['id_lang'];
-        $title_limit = 70;
+        $title_limit = 150;
         $short_title_limit = 65;
         $description_limit = 4990;
         $languages = Language::getLanguages();
@@ -3530,7 +3530,7 @@ class GShoppingFlux extends Module
             $title_crop .= ' ' . $product['size'];
         }
 
-        if (Tools::strlen($product['name']) > $title_limit) {
+        if (Tools::strlen($title_crop) > $title_limit) {
             $title_crop = Tools::substr($title_crop, 0, $title_limit - 1);
             $title_crop = Tools::substr($title_crop, 0, strrpos($title_crop, ' '));
         }
