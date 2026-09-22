@@ -9,7 +9,7 @@
  * @package GShoppingFlux
  * @copyright 2014-2025 Google Shopping Flux Contributors
  * @license Apache License 2.0
- * @version 1.7.8
+ * @version 1.7.9
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -197,7 +197,7 @@ class GShoppingFlux extends Module
     {
         $this->name = 'gshoppingflux';
         $this->tab = 'smart_shopping';
-        $this->version = '1.7.7';
+        $this->version = '1.7.9';
         $this->author = 'Dim00z';
         $this->bootstrap = true;
 
