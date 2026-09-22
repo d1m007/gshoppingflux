@@ -1,5 +1,13 @@
 <?php
 
+namespace GShoppingFlux;
+
+use Category;
+use Db;
+use Shop;
+use Tools;
+use Validate;
+
 /**
  * GCategories
  *

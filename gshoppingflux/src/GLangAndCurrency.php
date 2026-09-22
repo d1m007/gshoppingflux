@@ -1,5 +1,10 @@
 <?php
 
+namespace GShoppingFlux;
+
+use Db;
+use Shop;
+
 /**
  * GLangAndCurrency
  *

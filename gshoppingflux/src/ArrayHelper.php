@@ -1,5 +1,9 @@
 <?php
 
+namespace GShoppingFlux;
+
+use Tools;
+
 /**
  * Array Helper
  *

@@ -1,0 +1,106 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+A PrestaShop module (`gshoppingflux`) that exports store products as an XML feed for Google Merchant Center. The same feed format is also consumed by Shopalike, Pricerunner, and Partner-Ads. It supports PrestaShop 1.5 through 9.x, multi-shop, multi-language, and multi-currency setups.
+
+There is no test suite or release pipeline in this repo — it is plain PHP dropped into a PrestaShop `modules/` directory and only runs inside a PrestaShop installation (nothing here executes standalone). Composer is used only to generate the PSR-4 autoloader committed under `vendor/` (see "Entry point and file layout" below); there are no third-party runtime dependencies.
+
+## Running and testing changes
+
+There is no local dev server or test command. To exercise the module you need it installed inside an actual PrestaShop instance:
+
+```bash
+# symlink or copy the module directory into a PrestaShop install
+ln -s /path/to/gshoppingflux/gshoppingflux /path/to/prestashop/modules/gshoppingflux
+```
+
+Then install/configure it from the PrestaShop back office (Modules > Google Shopping Flux), or trigger feed generation directly:
+
+```bash
+# regenerate the feed for the shop's default context (invoked by PrestaShop's own cron in production)
+php modules/gshoppingflux/cron.php
+php modules/gshoppingflux/cron.php?local=1    # local inventory feed
+php modules/gshoppingflux/cron.php?reviews=1  # product reviews feed
+```
+
+`cron.php` bootstraps PrestaShop's `config.inc.php`/`init.php` and calls `GShoppingFlux::generateShopFileList()`. It must be run from inside a working PrestaShop tree — there's no mock or harness for it.
+
+For a quick syntax check without a full install:
+
+```bash
+php -l gshoppingflux/gshoppingflux.php
+for f in gshoppingflux/src/*.php gshoppingflux/src/Traits/*.php; do php -l "$f"; done
+```
+
+## Architecture
+
+### Entry point and file layout
+
+- `gshoppingflux/gshoppingflux.php` — the `GShoppingFlux extends Module` class PrestaShop instantiates by name. It's deliberately thin: class constants (`CONFIG_DEFAULTS`, the `VALID_*` whitelists), instance properties, `__construct()`, and five `use SomeTrait;` statements that compose in everything else. This file must stay in the **global namespace** — PrestaShop's module loader expects the bare class name `GShoppingFlux`.
+- `gshoppingflux/src/` — PSR-4 autoloaded, namespace `GShoppingFlux\`:
+  - `GCategories.php` — static data-access class for the PrestaShop-category → Google-category mapping table, including breadcrumb path building.
+  - `GLangAndCurrency.php` — static data-access class for the language/currency pairs a feed is generated for.
+  - `ArrayHelper.php` — small array utilities used throughout (form value extraction, `safeImplode()`/`safeExplode()`, an `array_column` polyfill).
+  - `Traits/` (namespace `GShoppingFlux\Traits`), one trait per functional area, each `use`'d into `GShoppingFlux` and sharing its `$this`:
+    - `LifecycleTrait` — install/uninstall/reset and the four hooks.
+    - `AdminOptionsTrait` — `getContent()`'s dispatcher, the `save*()` handlers, and the main options/local inventory/reviews forms.
+    - `AdminCategoriesLangTrait` — the category-mapping and language/currency admin screens, plus the feature/attribute/category-tree data helpers they use.
+    - `FeedGeneratorTrait` — the standard and local inventory feed generation engine (`generateAllShopsFileList()` down to `getItemXML()`).
+    - `ReviewsFeedTrait` — `generateReviewsFile()`, a separate XML schema from the shopping feed.
+- `gshoppingflux/composer.json` / `gshoppingflux/vendor/` — PSR-4 autoload mapping (`"GShoppingFlux\\": "src/"`) and its generated, committed autoloader. `gshoppingflux.php` requires `vendor/autoload.php` when present; if a deployment ships without `vendor/` (e.g. a hand-copied checkout), it falls back to explicit `require_once` calls for the same files, so the module works either way without requiring merchants to run Composer themselves.
+- `gshoppingflux/cron.php` — standalone bootstrap script that PrestaShop's task scheduler (or an external cron) hits to regenerate feeds.
+- `gshoppingflux/export/` — default output directory for generated XML files (can be overridden to the PrestaShop webroot via the `gen_file_in_root` setting).
+- `gshoppingflux/views/templates/admin/_configure/helpers/form/form.tpl` — Smarty template wrapping the admin config form.
+
+Every core PrestaShop class a `src/` file uses (`Db`, `Shop`, `Tools`, `Product`, ...) needs an explicit `use ClassName;` at the top of that file, since those classes live in the global namespace and `src/` files don't. When adding a new core-class call to a trait, check whether it's already imported before assuming it resolves.
+
+### Database
+
+Three custom tables, created in `installDb()` and dropped in `uninstallDb()`:
+
+- `gshoppingflux` — one row per PrestaShop category per shop: export flag, plus Google attributes (`condition`, `availability`, `gender`, `age_group`, `color`, `material`, `pattern`, `size`).
+- `gshoppingflux_lang` — the Google category name for that mapping, per language.
+- `gshoppingflux_lc` — language/currency pairs configured for feed generation, per shop, with a tax-included flag.
+
+All three are scoped by `id_shop`, with `id_shop = 0` used as a "global/all shops" row (see the `IN (0, id_shop)` pattern in every query in `GCategories` and `GLangAndCurrency`). Any new query against these tables should follow that same fallback convention.
+
+Module settings (feed formatting options — description source, shipping mode, image type, MPN/GTIN handling, excluded carriers, min export price, etc.) are stored via PrestaShop's standard `Configuration` table under `GS_*` keys (e.g. `GS_SHIPPING_MODE`, `GS_IMG_TYPE`, `GS_EXPORT_MIN_PRICE`), read/written through `getConfigFieldsValues()` / `saveFluxOptions()` in `AdminOptionsTrait`. The full default value for every `GS_*` key lives in `GShoppingFlux::CONFIG_DEFAULTS`, seeded on install and removed on full uninstall from that same list.
+
+### Hooks
+
+Registered in `install()`:
+
+- `actionObjectCategoryAddAfter` / `actionObjectCategoryDeleteAfter` — keep the `gshoppingflux`/`gshoppingflux_lang` rows in sync when categories are added/removed.
+- `actionShopDataDuplication` — replicates the module's per-category and language/currency config when a shop is duplicated (multi-shop).
+- `actionCarrierUpdate` — reacts to carrier changes (used by shipping cost/carrier-exclusion logic).
+
+### Feed generation flow
+
+All of this lives in `FeedGeneratorTrait` (`generateReviewsFile()` is the one exception, in `ReviewsFeedTrait`). Entry points are `generateAllShopsFileList()` → `generateShopFileList($id_shop, $local_inventory, $reviews)` → `generateLangFileList()` → `generateFile()` (private), which is called once per language/currency pair configured in `gshoppingflux_lc`. `generateFile()`:
+
+1. Loads shop, root category, and merged module config (`getConfigFieldsValues()` + `getConfigLocalInventoryFieldsValues()`).
+2. Loads the Google category mapping for the current language/shop via `getGCategValues()`.
+3. Resolves the output path via `_getOutputFileName()`, either under `export/` or the PrestaShop webroot.
+4. Iterates products, building each `<item>` with `getItemXML()` (standard feed) — combinations/attributes are expanded into separate items when `export_attributes` is enabled.
+5. Writes UTF-8 (with BOM) XML and chmods the file.
+
+Two parallel formats reuse most of this machinery:
+
+- Local inventory feed (`local_inventory = true`) — uses `getLocalInventoryItemXML()` instead of `getItemXML()`.
+- Product reviews feed (`reviews = true`) — a separate code path, `generateReviewsFile()`, producing the Google product-reviews XML schema instead of the shopping feed schema.
+
+### Admin UI
+
+`getContent()` (`AdminOptionsTrait`) is the single dispatcher for the configuration screen: it delegates to `processFormSubmissions()` for POST handling (`saveFluxOptions`, `saveLocalInventoryOptions` in `AdminOptionsTrait`; `saveCategory`, `saveLanguage` in `AdminCategoriesLangTrait`) and to `renderAdminContent()` for output, which stitches together several `render*Form()`/`render*List()` methods (main options, local inventory, reviews — `AdminOptionsTrait`; category mapping, language/currency list, info panel — `AdminCategoriesLangTrait`) into one page.
+
+## Gotchas
+
+- **Version is declared in four places and they must be bumped together**: the `@version` docblock at the top of `gshoppingflux.php`, `$this->version` in the constructor, `gshoppingflux/config.xml`, and `gshoppingflux/config_fr.xml` (plus the changelog in `README.md`). These have drifted out of sync before (e.g. the docblock/`config.xml` say `1.7.8` while `$this->version` still says `1.7.7`) — check all of them when releasing, and don't assume one is authoritative.
+- PrestaShop 9 dropped several old APIs this module used to depend on (`ToolsCore`, uppercase `Db` methods, `_PS_PRICE_DISPLAY_PRECISION_`); the compatibility shims for that are in `getPriceDisplayPrecision()` (`FeedGeneratorTrait`) and scattered `Tools::`/`Db::` call sites — when touching pricing or DB calls, keep both the PS 1.5 and PS 9 code paths working, per `ps_versions_compliancy` (`1.5.0.0` to `9.99.99`).
+- `id_shop = 0` rows are shared/global fallbacks in the three custom tables, not a literal shop with ID 0 — deleting or filtering these tables without accounting for that will break single-shop installs too.
+- `gshoppingflux.php` stays unnamespaced on purpose (see "Entry point and file layout"); don't add a `namespace` declaration to it or PrestaShop will fail to find the `GShoppingFlux` class. Everything under `src/` is namespaced `GShoppingFlux\` (or `GShoppingFlux\Traits\`) and needs `use` imports for both PrestaShop core classes and this module's own `GCategories`/`GLangAndCurrency`/`ArrayHelper`.
+- After adding, removing, or renaming a file under `src/`, run `composer dump-autoload -o` from `gshoppingflux/` and commit the regenerated `vendor/` — the classmap is committed, not built at deploy time, since merchants install the module by uploading a zip rather than running Composer.
+- The five traits share one flat method namespace once composed into `GShoppingFlux` (PHP fatal-errors on a name collision between two `use`'d traits) — before adding a method to a trait, check the others don't already declare a method with that name.
