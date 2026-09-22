@@ -36,16 +36,18 @@ class GCategories
      *               - cat_name: Associated Prestashop category name
      *               - breadcrumb: Full category path (e.g., "Home > Electronics > Phones")
      */
-    public static function gets($id_lang, $id_gcategory = null, $id_shop)
+    public static function gets($id_lang, $id_gcategory, $id_shop)
     {
         // Build SQL query with LEFT JOINs to fetch category data across multiple tables
+        // Global mapping rows (g.id_shop = 0) have no matching id_shop_default/category_lang
+        // row of their own, so they're resolved against the requested $id_shop instead.
         $ret = Db::getInstance()->executeS('SELECT g.*, gl.gcategory, s.name as shop_name, cl.name as cat_name '
             . 'FROM ' . _DB_PREFIX_ . 'gshoppingflux g '
-            . 'LEFT JOIN ' . _DB_PREFIX_ . 'category c ON (c.id_category=g.id_gcategory AND c.id_shop_default=g.id_shop) '
+            . 'LEFT JOIN ' . _DB_PREFIX_ . 'category c ON (c.id_category=g.id_gcategory AND c.id_shop_default=IF(g.id_shop=0, ' . (int) $id_shop . ', g.id_shop)) '
             . 'LEFT JOIN ' . _DB_PREFIX_ . 'category_shop cs ON (cs.id_category=g.id_gcategory AND cs.id_shop=g.id_shop) '
             . 'LEFT JOIN ' . _DB_PREFIX_ . 'gshoppingflux_lang gl ON (gl.id_gcategory=g.id_gcategory AND gl.id_lang=' . (int) $id_lang . ' AND gl.id_shop=g.id_shop) '
             . 'LEFT JOIN ' . _DB_PREFIX_ . 'shop s ON (s.id_shop=g.id_shop) '
-            . 'LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON (cl.id_category=g.id_gcategory AND cl.id_lang=' . (int) $id_lang . ' AND cl.id_shop=g.id_shop) '
+            . 'LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON (cl.id_category=g.id_gcategory AND cl.id_lang=' . (int) $id_lang . ' AND cl.id_shop=IF(g.id_shop=0, ' . (int) $id_shop . ', g.id_shop)) '
             . 'WHERE ' . ((!is_null($id_gcategory)) ? ' g.id_gcategory="' . (int) $id_gcategory . '" AND ' : '')
             . 'g.id_shop IN (0, ' . (int) $id_shop . ');');
 
@@ -340,7 +342,7 @@ class GCategories
      * @return string Formatted breadcrumb path (e.g., "Electronics > Phones")
      *                Returns empty string if category is root or inactive
      */
-    public static function getPath($id_category, $path = '', $id_lang, $id_shop, $id_root)
+    public static function getPath($id_category, $path, $id_lang, $id_shop, $id_root)
     {
         // Load category object with language and shop context
         $category = new Category((int) $id_category, (int) $id_lang, (int) $id_shop);

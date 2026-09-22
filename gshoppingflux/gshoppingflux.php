@@ -383,6 +383,7 @@ class GShoppingFlux extends Module
                 'GS_PRODUCT_TYPE',
                 'GS_DESCRIPTION',
                 'GS_SHIPPING_MODE',
+                'GS_SHIPPING_PRICE_FIXED',
                 'GS_SHIPPING_PRICE',
                 'GS_SHIPPING_COUNTRY',
                 'GS_SHIPPING_COUNTRIES',
@@ -980,6 +981,19 @@ class GShoppingFlux extends Module
         return $string;
     }
 
+    /**
+     * Escape a string so it cannot prematurely close a CDATA section.
+     *
+     * A literal "]]>" inside product/review data would otherwise terminate
+     * the enclosing <![CDATA[ ... ]]> block early and let raw markup leak
+     * into the feed, so every "]]>" sequence is split across two CDATA
+     * sections using the standard XML escaping trick.
+     */
+    private function cdataSafe($string)
+    {
+        return str_replace(']]>', ']]]]><![CDATA[>', (string) $string);
+    }
+
     private function generateXMLFiles($lang_id, $shop_id, $shop_group_id, $local_inventory = false, $reviews = false)
     {
         if (isset($lang_id) && $lang_id != 0) {
@@ -987,7 +1001,7 @@ class GShoppingFlux extends Module
             $languages = GLangAndCurrency::getLangCurrencies($lang_id, $shop_id);
         } else {
             $count = $this->generateShopFileList($shop_id, $local_inventory, $reviews);
-            $languages = GLangAndCurrency::getAllLangCurrencies(1);
+            $languages = GLangAndCurrency::getAllLangCurrencies(1, (int) $shop_id);
             if ($reviews) {
                 if (Configuration::get('GS_GEN_FILE_IN_ROOT', 0, $shop_group_id, $shop_id) == 1) {
                     $get_file_url = $this->uri . $this->_getOutputFileName(0, 0, $shop_id, $local_inventory, $reviews);
@@ -1692,7 +1706,7 @@ class GShoppingFlux extends Module
         $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false) . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
         $helper->tpl_vars = [
-            'fields_value' => $this->getConfigLocalInventoryFieldsValues($this->context->shop->id),
+            'fields_value' => [],
             'id_language' => $this->context->language->id,
             'languages' => $this->context->controller->getLanguages(),
         ];
@@ -2233,6 +2247,7 @@ class GShoppingFlux extends Module
     {
         // Initialize variables
         $glangcurrency_edit = '';
+        $glangtax_included = '';
         $glangexport_active = '';
 
         // Load existing values if editing
@@ -3042,7 +3057,7 @@ class GShoppingFlux extends Module
             return $this->generateReviewsFile($id_shop);
         }
         // Get all shop languages
-        $languages = GLangAndCurrency::getAllLangCurrencies(1);
+        $languages = GLangAndCurrency::getAllLangCurrencies(1, (int) $id_shop);
         foreach ($languages as $i => $lang) {
             $currencies = explode(';', $lang['id_currency']);
             foreach ($currencies as $id_curr) {
@@ -3325,12 +3340,12 @@ class GShoppingFlux extends Module
             $xml .= '<review>' . "\n";
             $xml .= '<review_id>' . $comment['id_product_comment'] . '</review_id>' . "\n";
             $xml .= '<reviewer>' . "\n";
-            $xml .= '<name is_anonymous="' . $comment['anonymous'] . '">' . $comment['customer_name'] . '</name>' . "\n";
+            $xml .= '<name is_anonymous="' . $comment['anonymous'] . '">' . htmlspecialchars($comment['customer_name'], self::REPLACE_FLAGS, self::CHARSET, false) . '</name>' . "\n";
             $xml .= '</reviewer>' . "\n";
             $date_add = new DateTime($comment['date_add']);
             $xml .= '<review_timestamp>' . $date_add->format(DATE_ATOM) . '</review_timestamp>' . "\n";
-            $xml .= '<title>' . $comment['title'] . '</title>' . "\n";
-            $xml .= '<content>' . $comment['content'] . '</content>' . "\n";
+            $xml .= '<title>' . htmlspecialchars($comment['title'], self::REPLACE_FLAGS, self::CHARSET, false) . '</title>' . "\n";
+            $xml .= '<content>' . htmlspecialchars($comment['content'], self::REPLACE_FLAGS, self::CHARSET, false) . '</content>' . "\n";
             $product_link = $this->context->link->getProductLink($comment['id_product'], $p->link_rewrite);
             $xml .= '<review_url type="group">' . $product_link . '</review_url>' . "\n";
             $xml .= '<ratings>' . "\n";
@@ -3532,12 +3547,18 @@ class GShoppingFlux extends Module
 
         if (Tools::strlen($title_crop) > $title_limit) {
             $title_crop = Tools::substr($title_crop, 0, $title_limit - 1);
-            $title_crop = Tools::substr($title_crop, 0, strrpos($title_crop, ' '));
+            $title_crop_pos = strrpos($title_crop, ' ');
+            if ($title_crop_pos !== false) {
+                $title_crop = Tools::substr($title_crop, 0, $title_crop_pos);
+            }
         }
 
         if (Tools::strlen($short_title_crop) > $short_title_limit) {
             $short_title_crop = Tools::substr($short_title_crop, 0, $short_title_limit - 1);
-            $short_title_crop = Tools::substr($short_title_crop, 0, strrpos($short_title_crop, ' '));
+            $short_title_crop_pos = strrpos($short_title_crop, ' ');
+            if ($short_title_crop_pos !== false) {
+                $short_title_crop = Tools::substr($short_title_crop, 0, $short_title_crop_pos);
+            }
         }
 
         // Description type
@@ -3561,14 +3582,18 @@ class GShoppingFlux extends Module
 
         if (Tools::strlen($description_crop) > $description_limit) {
             $description_crop = Tools::substr($description_crop, 0, $description_limit - 1);
-            $description_crop = Tools::substr($description_crop, 0, strrpos($description_crop, ' ')) . ' ...';
+            $description_crop_pos = strrpos($description_crop, ' ');
+            if ($description_crop_pos !== false) {
+                $description_crop = Tools::substr($description_crop, 0, $description_crop_pos);
+            }
+            $description_crop .= ' ...';
         }
 
         $xml_googleshopping .= '<item>' . "\n";
         $xml_googleshopping .= '<g:id>' . $product['gid'] . '</g:id>' . "\n";
-        $xml_googleshopping .= '<g:title><![CDATA[' . $title_crop . ']]></g:title>' . "\n";
-        $xml_googleshopping .= '<g:short_title><![CDATA[' . $short_title_crop . ']]></g:short_title>' . "\n";
-        $xml_googleshopping .= '<g:description><![CDATA[' . $description_crop . ']]></g:description>' . "\n";
+        $xml_googleshopping .= '<g:title><![CDATA[' . $this->cdataSafe($title_crop) . ']]></g:title>' . "\n";
+        $xml_googleshopping .= '<g:short_title><![CDATA[' . $this->cdataSafe($short_title_crop) . ']]></g:short_title>' . "\n";
+        $xml_googleshopping .= '<g:description><![CDATA[' . $this->cdataSafe($description_crop) . ']]></g:description>' . "\n";
         $xml_googleshopping .= '<g:link><![CDATA[' . $this->linkencode($product_link) . ']]></g:link>' . "\n";
 
         // Image links
@@ -3614,7 +3639,7 @@ class GShoppingFlux extends Module
         }
 
         if (!empty($product['condition'])) {
-            $xml_googleshopping .= '<g:condition><![CDATA[' . $product['condition'] . ']]></g:condition>' . "\n";
+            $xml_googleshopping .= '<g:condition><![CDATA[' . $this->cdataSafe($product['condition']) . ']]></g:condition>' . "\n";
         }
 
         // Shop category
@@ -3630,11 +3655,11 @@ class GShoppingFlux extends Module
         }
 
         $product_type .= $breadcrumb;
-        $xml_googleshopping .= '<g:product_type><![CDATA[' . $product_type . ']]></g:product_type>' . "\n";
+        $xml_googleshopping .= '<g:product_type><![CDATA[' . $this->cdataSafe($product_type) . ']]></g:product_type>' . "\n";
 
         // Matching Google category, or parent categories' one
         $product['gcategory'] = $this->categories_values[$product['category_default']]['gcategory'];
-        $xml_googleshopping .= '<g:google_product_category><![CDATA[' . $product['gcategory'] . ']]></g:google_product_category>' . "\n";
+        $xml_googleshopping .= '<g:google_product_category><![CDATA[' . $this->cdataSafe($product['gcategory']) . ']]></g:google_product_category>' . "\n";
 
         // Product quantity & availability
         if (empty($this->categories_values[$product['category_default']]['gcat_avail'])) {
@@ -3758,12 +3783,12 @@ class GShoppingFlux extends Module
 
         //  Product gender attribute, or category gender attribute, or parent's one
         if (!empty($product['gender'])) {
-            $xml_googleshopping .= '<g:gender><![CDATA[' . $product['gender'] . ']]></g:gender>' . "\n";
+            $xml_googleshopping .= '<g:gender><![CDATA[' . $this->cdataSafe($product['gender']) . ']]></g:gender>' . "\n";
         }
 
         // Product age_group attribute, or category age_group attribute, or parent's one
         if (!empty($product['age_group'])) {
-            $xml_googleshopping .= '<g:age_group><![CDATA[' . $product['age_group'] . ']]></g:age_group>' . "\n";
+            $xml_googleshopping .= '<g:age_group><![CDATA[' . $this->cdataSafe($product['age_group']) . ']]></g:age_group>' . "\n";
         }
 
         // Product attributes combination groups
@@ -3773,22 +3798,22 @@ class GShoppingFlux extends Module
 
         // Product color attribute, or category color attribute, or parent's one
         if (!empty($product['color'])) {
-            $xml_googleshopping .= '<g:color><![CDATA[' . $product['color'] . ']]></g:color>' . "\n";
+            $xml_googleshopping .= '<g:color><![CDATA[' . $this->cdataSafe($product['color']) . ']]></g:color>' . "\n";
         }
 
         // Product material attribute, or category material attribute, or parent's one
         if (!empty($product['material'])) {
-            $xml_googleshopping .= '<g:material><![CDATA[' . $product['material'] . ']]></g:material>' . "\n";
+            $xml_googleshopping .= '<g:material><![CDATA[' . $this->cdataSafe($product['material']) . ']]></g:material>' . "\n";
         }
 
         // Product pattern attribute, or category pattern attribute, or parent's one
         if (!empty($product['pattern'])) {
-            $xml_googleshopping .= '<g:pattern><![CDATA[' . $product['pattern'] . ']]></g:pattern>' . "\n";
+            $xml_googleshopping .= '<g:pattern><![CDATA[' . $this->cdataSafe($product['pattern']) . ']]></g:pattern>' . "\n";
         }
 
         // Product size attribute, or category size attribute, or parent's one
         if (!empty($product['size'])) {
-            $xml_googleshopping .= '<g:size><![CDATA[' . $product['size'] . ']]></g:size>' . "\n";
+            $xml_googleshopping .= '<g:size><![CDATA[' . $this->cdataSafe($product['size']) . ']]></g:size>' . "\n";
         }
 
         // Featured products
@@ -3890,20 +3915,22 @@ class GShoppingFlux extends Module
                     $carriers[$index]['price'] = $shipping;
                 }
 
-                $shipping = array_reduce($carriers, function ($a, $b) {
-                    if ($a === null) {
-                        return $b;
-                    } else {
-                        return ($a['price'] > $b['price']) ? $b : $a;
-                    }
-                });
+                if (!empty($carriers)) {
+                    $shipping = array_reduce($carriers, function ($a, $b) {
+                        if ($a === null) {
+                            return $b;
+                        } else {
+                            return ($a['price'] > $b['price']) ? $b : $a;
+                        }
+                    });
 
-                foreach ($countries as $country) {
-                    $xml_googleshopping .= '<g:shipping>' . "\n";
-                    $xml_googleshopping .= "\t" . '<g:country>' . $country['iso_code'] . '</g:country>' . "\n";
-                    $xml_googleshopping .= "\t" . '<g:service>' . $shipping['delay'] . '</g:service>' . "\n";
-                    $xml_googleshopping .= "\t" . '<g:price>' . Tools::convertPriceFull($shipping['price'], null, $currency) . ' ' . $currency->iso_code . '</g:price>' . "\n";
-                    $xml_googleshopping .= '</g:shipping>' . "\n";
+                    foreach ($countries as $country) {
+                        $xml_googleshopping .= '<g:shipping>' . "\n";
+                        $xml_googleshopping .= "\t" . '<g:country>' . $country['iso_code'] . '</g:country>' . "\n";
+                        $xml_googleshopping .= "\t" . '<g:service>' . $shipping['delay'] . '</g:service>' . "\n";
+                        $xml_googleshopping .= "\t" . '<g:price>' . Tools::convertPriceFull($shipping['price'], null, $currency) . ' ' . $currency->iso_code . '</g:price>' . "\n";
+                        $xml_googleshopping .= '</g:shipping>' . "\n";
+                    }
                 }
             }
         }
@@ -3914,7 +3941,7 @@ class GShoppingFlux extends Module
         }
         if ($this->module_conf['shipping_dimension'] == 1 && ($product['width'] != 0 && $product['height'] != 0 && $product['depth'] != 0)) {
             $xml_googleshopping .= '<g:shipping_length>' . number_format($product['depth'], 2, '.', '') . ' ' . Configuration::get('PS_DIMENSION_UNIT') . '</g:shipping_length>' . "\n";
-            $xml_googleshopping .= '<g:shipping_width>' . number_format($product['depth'], 2, '.', '') . ' ' . Configuration::get('PS_DIMENSION_UNIT') . '</g:shipping_width>' . "\n";
+            $xml_googleshopping .= '<g:shipping_width>' . number_format($product['width'], 2, '.', '') . ' ' . Configuration::get('PS_DIMENSION_UNIT') . '</g:shipping_width>' . "\n";
             $xml_googleshopping .= '<g:shipping_height>' . number_format($product['height'], 2, '.', '') . ' ' . Configuration::get('PS_DIMENSION_UNIT') . '</g:shipping_height>' . "\n";
         }
         $xml_googleshopping .= '<g:unit_pricing_measure>1 ct</g:unit_pricing_measure>' . "\n";
