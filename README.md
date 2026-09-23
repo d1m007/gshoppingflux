@@ -19,7 +19,8 @@ Follow these steps to get up and running with your product feeds fast.
 - 1.7.2.4
 - 1.7.x
 - 8.x
-- **9.0.1** ✨ (New!)
+- 9.0.1
+- **9.1.5** ✨ (New!)
 
 ### Installing
 
