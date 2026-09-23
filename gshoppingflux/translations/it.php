@@ -71,7 +71,7 @@ $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_0057f77eeace28dd803c911f4a74f
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_12d1aae125b220ad89fcfdd2d309a41e'] = 'Configura questo URL nel tuo account Google Merchant Center.';
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_9684181a796d22fe88f102b48e74d554'] = 'Installa un\'attività CRON per aggiornare il feed regolarmente.';
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_ad90804ea8c1994c3d3e395ce8e3b5b1'] = 'Nota bene: poiché la funzione multi-negozio è attiva, dovrai installare più attività CRON, una per ogni negozio.';
-$_MODULE['<{gshoppingflux}prestashop>gshoppingflux_c136ceb844ca35616523de97357e1e64'] = 'Segnala i bug e trova assistenza sul forum: <a href="https://www.prestashop.com/forums/topic/661366-free-module-google-shopping-flux/" target="_blank">https://www.prestashop.com/forums/topic/661366-free-module-google-shopping-flux/</a>';
+$_MODULE['<{gshoppingflux}prestashop>gshoppingflux_05e718ce24fbae8afa883d6c417ac95c'] = 'Segnala i bug e trova assistenza sul forum: <a href="https://github.com/d1m007/gshoppingflux" target="_blank">https://github.com/d1m007/gshoppingflux</a>';
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_ec043a031d140b4bdda960e67b8d06cf'] = 'Informazioni sui file';
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_cab6b4ef90641caca74644cd10a41091'] = 'Link ai file generati: ';
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_35b5ee0fe068282ad7e55fc5d2177534'] = 'Generazione automatica dei file: ';

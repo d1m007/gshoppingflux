@@ -860,7 +860,7 @@ trait AdminCategoriesLangTrait
             $cron_desc .= ' ' . $this->l('Please note that as multishop feature is active, you\'ll have to install several CRON tasks, one for each shop.');
         }
 
-        $form_desc = $this->l('Report bugs and find help on forum: <a href="https://www.prestashop.com/forums/topic/661366-free-module-google-shopping-flux/" target="_blank">https://www.prestashop.com/forums/topic/661366-free-module-google-shopping-flux/</a>');
+        $form_desc = $this->l('Report bugs and find help on forum: <a href="https://github.com/d1m007/gshoppingflux" target="_blank">https://github.com/d1m007/gshoppingflux</a>');
         $helper->fields_value = [
             'info_files' => $output,
             'info_cron' => $info_cron,
