@@ -1,5 +1,13 @@
 <?php
 
+namespace GShoppingFlux;
+
+use Category;
+use Db;
+use Shop;
+use Tools;
+use Validate;
+
 /**
  * GCategories
  *
@@ -17,6 +25,51 @@ if (!defined('_PS_VERSION_')) {
 
 class GCategories
 {
+    /** Safety cap on getPath() recursion depth, far beyond any real category tree */
+    const MAX_PATH_DEPTH = 50;
+
+    /**
+     * Per-request cache of loaded Category objects, keyed by
+     * "id_category-id_lang-id_shop". getPath() walks the same ancestor
+     * chain repeatedly (once per exported product sharing a category),
+     * so memoizing the Category lookup avoids re-querying the same row.
+     *
+     * @var array<string, Category>
+     */
+    private static $categoryCache = [];
+
+    /**
+     * Load a Category, reusing a previously loaded instance for the same
+     * (id_category, id_lang, id_shop) within this request/process.
+     *
+     * @param int $id_category
+     * @param int $id_lang
+     * @param int $id_shop
+     * @return Category
+     */
+    private static function loadCategory($id_category, $id_lang, $id_shop)
+    {
+        $key = $id_category . '-' . $id_lang . '-' . $id_shop;
+
+        if (!array_key_exists($key, self::$categoryCache)) {
+            self::$categoryCache[$key] = new Category((int) $id_category, (int) $id_lang, (int) $id_shop);
+        }
+
+        return self::$categoryCache[$key];
+    }
+
+    /**
+     * Clear the Category cache used by getPath(). PrestaShop requests and
+     * CLI cron runs are each their own process, so production never needs
+     * this; it exists for test isolation between test cases sharing one
+     * PHP process.
+     *
+     * @return void
+     */
+    public static function resetCache()
+    {
+        self::$categoryCache = [];
+    }
 
     /**
      * Retrieve all Google Shopping categories with related data
@@ -36,16 +89,18 @@ class GCategories
      *               - cat_name: Associated Prestashop category name
      *               - breadcrumb: Full category path (e.g., "Home > Electronics > Phones")
      */
-    public static function gets($id_lang, $id_gcategory = null, $id_shop)
+    public static function gets($id_lang, $id_gcategory, $id_shop)
     {
         // Build SQL query with LEFT JOINs to fetch category data across multiple tables
+        // Global mapping rows (g.id_shop = 0) have no matching id_shop_default/category_lang
+        // row of their own, so they're resolved against the requested $id_shop instead.
         $ret = Db::getInstance()->executeS('SELECT g.*, gl.gcategory, s.name as shop_name, cl.name as cat_name '
             . 'FROM ' . _DB_PREFIX_ . 'gshoppingflux g '
-            . 'LEFT JOIN ' . _DB_PREFIX_ . 'category c ON (c.id_category=g.id_gcategory AND c.id_shop_default=g.id_shop) '
+            . 'LEFT JOIN ' . _DB_PREFIX_ . 'category c ON (c.id_category=g.id_gcategory AND c.id_shop_default=IF(g.id_shop=0, ' . (int) $id_shop . ', g.id_shop)) '
             . 'LEFT JOIN ' . _DB_PREFIX_ . 'category_shop cs ON (cs.id_category=g.id_gcategory AND cs.id_shop=g.id_shop) '
             . 'LEFT JOIN ' . _DB_PREFIX_ . 'gshoppingflux_lang gl ON (gl.id_gcategory=g.id_gcategory AND gl.id_lang=' . (int) $id_lang . ' AND gl.id_shop=g.id_shop) '
             . 'LEFT JOIN ' . _DB_PREFIX_ . 'shop s ON (s.id_shop=g.id_shop) '
-            . 'LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON (cl.id_category=g.id_gcategory AND cl.id_lang=' . (int) $id_lang . ' AND cl.id_shop=g.id_shop) '
+            . 'LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl ON (cl.id_category=g.id_gcategory AND cl.id_lang=' . (int) $id_lang . ' AND cl.id_shop=IF(g.id_shop=0, ' . (int) $id_shop . ', g.id_shop)) '
             . 'WHERE ' . ((!is_null($id_gcategory)) ? ' g.id_gcategory="' . (int) $id_gcategory . '" AND ' : '')
             . 'g.id_shop IN (0, ' . (int) $id_shop . ');');
 
@@ -202,7 +257,9 @@ class GCategories
             ]
         );
 
-        // Insert language-specific translations for Google category names
+        // Insert language-specific translations for Google category names.
+        // Db::insert() already escapes scalar array values, so no explicit
+        // pSQL() call is needed here (kept consistent with the fields above).
         foreach ($gcateg as $id_lang => $categ) {
             Db::getInstance()->insert(
                 'gshoppingflux_lang',
@@ -210,7 +267,7 @@ class GCategories
                     'id_gcategory' => (int) $id_category,
                     'id_lang' => (int) $id_lang,
                     'id_shop' => (int) $id_shop,
-                    'gcategory' => pSQL($categ),
+                    'gcategory' => $categ,
                 ]
             );
         }
@@ -267,12 +324,13 @@ class GCategories
             'id_gcategory = ' . (int) $id_category . ' AND id_shop=' . (int) $id_shop
         );
 
-        // Update language-specific translations for each language
+        // Update language-specific translations for each language.
+        // Db::update() already escapes scalar array values.
         foreach ($gcateg as $id_lang => $categ) {
             Db::getInstance()->update(
                 'gshoppingflux_lang',
                 [
-                    'gcategory' => pSQL($categ),
+                    'gcategory' => $categ,
                 ],
                 'id_gcategory = ' . (int) $id_category . ' AND id_lang = ' . (int) $id_lang . ' AND id_shop=' . (int) $id_shop
             );
@@ -336,14 +394,22 @@ class GCategories
      * @param int $id_lang Language ID for category name translation
      * @param int $id_shop Shop ID for category scope
      * @param int $id_root Root category ID where recursion should stop
+     * @param int $depth Current recursion depth (internal use, leave at default on initial call)
      *
      * @return string Formatted breadcrumb path (e.g., "Electronics > Phones")
      *                Returns empty string if category is root or inactive
      */
-    public static function getPath($id_category, $path = '', $id_lang, $id_shop, $id_root)
+    public static function getPath($id_category, $path, $id_lang, $id_shop, $id_root, $depth = 0)
     {
+        // Safety net against a corrupted id_parent chain that never reaches
+        // the root (orphaned category, bad import): stop instead of
+        // recursing until the stack/memory limit is hit.
+        if ($depth > self::MAX_PATH_DEPTH) {
+            return $path;
+        }
+
         // Load category object with language and shop context
-        $category = new Category((int) $id_category, (int) $id_lang, (int) $id_shop);
+        $category = self::loadCategory($id_category, $id_lang, $id_shop);
 
         // Stop recursion if: category is invalid, is root, or is inactive
         if (!Validate::isLoadedObject($category) || $category->id_category == $id_root || $category->active == 0) {
@@ -362,6 +428,6 @@ class GCategories
         }
 
         // Recursive call: traverse to parent category and continue building path
-        return self::getPath((int) $category->id_parent, $path, (int) $id_lang, (int) $id_shop, (int) $id_root);
+        return self::getPath((int) $category->id_parent, $path, (int) $id_lang, (int) $id_shop, (int) $id_root, $depth + 1);
     }
 }

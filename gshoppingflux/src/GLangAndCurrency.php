@@ -1,5 +1,10 @@
 <?php
 
+namespace GShoppingFlux;
+
+use Db;
+use Shop;
+
 /**
  * GLangAndCurrency
  *
@@ -59,26 +64,32 @@ class GLangAndCurrency
     }
 
     /**
-     * Retrieve all language and currency configurations across all shops
+     * Retrieve all language and currency configurations for a specific shop
      *
-     * Fetches all available language-currency combinations for the current shop context.
-     * Respects Prestashop's shop restrictions through Shop::addSqlRestriction().
+     * Fetches all available language-currency combinations for the given shop,
+     * following the module's global (id_shop = 0) / shop-specific fallback convention.
      *
      * Optionally filters to return only active languages, useful for feed generation
      * where inactive languages should be skipped.
      *
      * @param bool $active Optional flag to filter only active languages (default: false)
+     * @param int $id_shop Shop ID to scope results to a specific shop
      *
      * @return array Array of language-currency configurations (see getLangCurrencies() for structure)
      *
      * @see getLangCurrencies() For shop-specific filtering
      */
-    public static function getAllLangCurrencies($active = false)
+    public static function getAllLangCurrencies($active = false, $id_shop = null)
     {
-        // Build SQL query with shop restriction and optional active filter
+        // Build SQL query scoped to the requested shop (or the current context shop
+        // when none is given) and optional active filter
+        if ($id_shop === null) {
+            $id_shop = (int) Shop::getContextShopID();
+        }
+
         $ret = Db::getInstance()->executeS('SELECT glc.*, l.* FROM ' . _DB_PREFIX_ . 'gshoppingflux_lc glc '
             . 'INNER JOIN ' . _DB_PREFIX_ . 'lang l ON (glc.id_glang = l.id_lang)'
-            . 'WHERE 1 ' . Shop::addSqlRestriction()
+            . 'WHERE glc.id_shop IN (0, ' . (int) $id_shop . ')'
             . ($active ? ' AND l.`active` = 1' : ''));
 
         return $ret;

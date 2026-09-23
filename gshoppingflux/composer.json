@@ -1,0 +1,29 @@
+{
+    "name": "gshoppingflux/gshoppingflux",
+    "description": "Export your products to Google Merchant Center, easily.",
+    "type": "prestashop-module",
+    "license": "Apache-2.0",
+    "require": {
+        "php": ">=7.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "GShoppingFlux\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "GShoppingFlux\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.6"
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}

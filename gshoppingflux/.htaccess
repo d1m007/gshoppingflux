@@ -1,0 +1,18 @@
+# Some hosts (e.g. o2switch) ship a hardened modules/.htaccess that denies
+# direct access to every .php file under modules/ as a blanket security
+# measure. cron.php is this module's intentional direct-access entry point
+# (hit by PrestaShop's task scheduler or an external cron job), so it needs
+# to be re-allowed here, in the module's own .htaccess, which Apache merges
+# on top of the parent directory's rules for anything under this folder.
+<Files "cron.php">
+    # Apache 2.2
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Allow from all
+    </IfModule>
+
+    # Apache 2.4
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+</Files>

@@ -19,7 +19,8 @@ Follow these steps to get up and running with your product feeds fast.
 - 1.7.2.4
 - 1.7.x
 - 8.x
-- **9.0.1** ✨ (New!)
+- 9.0.1
+- **9.1.5** ✨ (New!)
 
 ### Installing
 
@@ -54,9 +55,23 @@ Depending on your store and what you want to send to google, you would need to c
 
 ## Changelog
 
-### Version 1.7.8 (2026)
+### Version 1.8.0 (2026)
 
-- Fix 404 errors when editing categories on PS9 (Thank you @oxess)
+- Fix `<g:shipping_width>` reporting product depth instead of width
+- Fix title/short_title/description truncation producing an empty value when no word boundary was found near the length limit
+- Escape `]]>` in CDATA sections (title, description, category, attributes) and in product review fields, preventing malformed or injected XML in the feed
+- Fix a PHP warning and incorrect shipping price when no carrier matches a product's size or weight
+- Fix the `GS_SHIPPING_PRICE_FIXED` setting being left behind after a full uninstall
+- Fix language/currency selection not following the shop being exported on multi-shop CRON runs
+- Fix category name and breadcrumb missing for global (all-shops) category mappings
+- Fix 404 error when editing a category or the language/currency list on PrestaShop 9 (Thank you @oxess)
+- Fix color/material/pattern/size, excluded shipping countries/carriers, and currency selects resetting on save due to broken `safeImplode()` calls (Thank you @rodriciru)
+- Add a `<g:short_title>` element to the feed (max 65 characters)
+- Increase `<g:title>` max length to 150 characters (was 70)
+- Restructure the module into a PSR-4 `src/` layout with Composer autoloading and one trait per functional area, following PrestaShop 9 conventions
+- Add a PHPUnit unit test suite (`gshoppingflux/tests/`)
+- Whitelist admin form values (condition, availability, gender, shipping mode, etc.) against their known option lists instead of storing raw input
+- Remove duplicated code across the feed generation and admin form code paths
 
 ### Version 1.7.7 (2026)
 
