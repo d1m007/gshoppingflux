@@ -1,8 +1,8 @@
 {
-    "name": "webweasel/gshoppingflux",
+    "name": "gshoppingflux/gshoppingflux",
     "description": "Export your products to Google Merchant Center, easily.",
     "type": "prestashop-module",
-    "license": "AFL-3.0",
+    "license": "Apache-2.0",
     "require": {
         "php": ">=7.1"
     },
