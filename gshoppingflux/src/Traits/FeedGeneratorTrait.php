@@ -558,7 +558,7 @@ trait FeedGeneratorTrait
         if ($this->module_conf['gen_file_in_root']) {
             $generate_file_path = _PS_ROOT_DIR_ . '/' . $this->_getOutputFileName($lang['iso_code'], $currency->iso_code, $id_shop, $local_inventory);
         } else {
-            $generate_file_path = dirname(__FILE__) . '/export/' . $this->_getOutputFileName($lang['iso_code'], $currency->iso_code, $id_shop, $local_inventory);
+            $generate_file_path = _PS_MODULE_DIR_ . $this->name . '/export/' . $this->_getOutputFileName($lang['iso_code'], $currency->iso_code, $id_shop, $local_inventory);
         }
 
         if ($this->shop->name == 'Prestashop') {

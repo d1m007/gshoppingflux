@@ -62,10 +62,10 @@ trait LifecycleTrait
         }
 
         // Create export directory for XML files
-        if (!is_dir(dirname(__FILE__) . '/export')) {
-            @mkdir(dirname(__FILE__) . '/export', 0755, true);
+        if (!is_dir(_PS_MODULE_DIR_ . $this->name . '/export')) {
+            @mkdir(_PS_MODULE_DIR_ . $this->name . '/export', 0755, true);
         }
-        @chmod(dirname(__FILE__) . '/export', 0755);
+        @chmod(_PS_MODULE_DIR_ . $this->name . '/export', 0755);
 
         return true;
     }

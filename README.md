@@ -55,6 +55,12 @@ Depending on your store and what you want to send to google, you would need to c
 
 ## Changelog
 
+### Version 1.8.1 (2026)
+
+- Fix XML feed no longer generated at the shop root when "Generate the files to the root of the site" is enabled, a regression from 1.8.0 (Thank you @eballetbaz)
+- Fix XML feed written under `src/Traits/export/` instead of the module's `export/` directory when "Generate the files to the root of the site" is disabled, a regression from 1.8.0
+- Fix additional images from other shops wrongly included in multi-shop feeds (Thank you @eballetbaz)
+
 ### Version 1.8.0 (2026)
 
 - Fix `<g:shipping_width>` reporting product depth instead of width
