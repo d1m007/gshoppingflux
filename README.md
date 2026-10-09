@@ -55,6 +55,10 @@ Depending on your store and what you want to send to google, you would need to c
 
 ## Changelog
 
+### Version 1.8.3 (2026)
+
+- New feature : Option to capitalize each word of the title and short title (Thank you @eballetbaz)
+
 ### Version 1.8.2 (2026)
 
 - New feature : Option to append Brand to the title (Thank you @eballetbaz)

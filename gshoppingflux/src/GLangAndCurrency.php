@@ -16,7 +16,7 @@ use Shop;
  * scoping of language-currency configurations.
  *
  * @package GShoppingFlux
- * @copyright 2014-2025 Google Shopping Flux Contributors
+ * @copyright 2014-2026 Google Shopping Flux Contributors
  * @license Apache License 2.0
  */
 

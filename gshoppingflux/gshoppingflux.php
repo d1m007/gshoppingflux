@@ -7,9 +7,9 @@
  * Supports multi-language, multi-currency, and multi-shop configurations.
  *
  * @package GShoppingFlux
- * @copyright 2014-2025 Google Shopping Flux Contributors
+ * @copyright 2014-2026 Google Shopping Flux Contributors
  * @license Apache License 2.0
- * @version 1.8.2
+ * @version 1.8.3
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -95,6 +95,7 @@ class GShoppingFlux extends Module
     const CONFIG_DEFAULTS = [
         'GS_PRODUCT_TYPE' => '',
         'GS_TITLE' => 'name+attributes',
+        'GS_CAPITALIZE_TITLE' => '0',
         'GS_DESCRIPTION' => 'short',
         'GS_SHIPPING_MODE' => 'fixed',
         'GS_SHIPPING_PRICE_FIXED' => '1',
@@ -216,7 +217,7 @@ class GShoppingFlux extends Module
     {
         $this->name = 'gshoppingflux';
         $this->tab = 'smart_shopping';
-        $this->version = '1.8.2';
+        $this->version = '1.8.3';
         $this->author = 'Dim00z';
         $this->bootstrap = true;
 

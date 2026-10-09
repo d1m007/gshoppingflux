@@ -16,7 +16,7 @@ use Shop;
  * that keep the module's own tables in sync with category/shop changes.
  *
  * @package GShoppingFlux
- * @copyright 2014-2025 Google Shopping Flux Contributors
+ * @copyright 2014-2026 Google Shopping Flux Contributors
  * @license Apache License 2.0
  */
 trait LifecycleTrait

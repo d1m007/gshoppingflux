@@ -24,7 +24,7 @@ use Validate;
  * (features, attributes, category tree) they depend on.
  *
  * @package GShoppingFlux
- * @copyright 2014-2025 Google Shopping Flux Contributors
+ * @copyright 2014-2026 Google Shopping Flux Contributors
  * @license Apache License 2.0
  */
 trait AdminCategoriesLangTrait

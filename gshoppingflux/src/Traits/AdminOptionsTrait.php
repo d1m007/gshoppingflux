@@ -20,7 +20,7 @@ use Tools;
  * forms.
  *
  * @package GShoppingFlux
- * @copyright 2014-2025 Google Shopping Flux Contributors
+ * @copyright 2014-2026 Google Shopping Flux Contributors
  * @license Apache License 2.0
  */
 trait AdminOptionsTrait
@@ -154,6 +154,7 @@ trait AdminOptionsTrait
         // Update all configuration values
         $updated &= Configuration::updateValue('GS_PRODUCT_TYPE', $product_type, false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_TITLE', $title, false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= Configuration::updateValue('GS_CAPITALIZE_TITLE', (bool) Tools::getValue('capitalize_title'), false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_DESCRIPTION', $description, false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_SHIPPING_MODE', $shipping_mode, false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_SHIPPING_PRICE', (float) Tools::getValue('shipping_price'), false, (int) $shop_group_id, (int) $shop_id);
@@ -511,6 +512,12 @@ trait AdminOptionsTrait
                             'name' => 'name',
                         ]
                     ],
+                    // Option to capitalize each words of title and short title
+                    $this->boolSwitchField(
+                        'capitalize_title',
+                        $this->l('Capitalize words of title and short title'),
+                        $this->l('Uppercases the first letter of each word. Words that already contain capitals after their first letter (sizes, acronyms, brands) are kept as-is, e.g. "iPhone case size XL" becomes "iPhone Case Size XL".')
+                    ),
                     // Description type selector
                     [
                         'type' => 'select',
@@ -904,6 +911,7 @@ trait AdminOptionsTrait
         // Initialize all variables with default values
         $product_type = [];
         $title = 'name+attributes';
+        $capitalize_title = true;
         $description = 'short';
         $shipping_price_fixed = true;
         $shipping_mode = 'fixed';
@@ -938,6 +946,7 @@ trait AdminOptionsTrait
 
         // Retrieve all configuration values
         $title = Configuration::get('GS_TITLE', 0, $shop_group_id, $shop_id);
+        $capitalize_title &= (bool) Configuration::get('GS_CAPITALIZE_TITLE', 0, $shop_group_id, $shop_id);
         $description = Configuration::get('GS_DESCRIPTION', 0, $shop_group_id, $shop_id);
         $shipping_mode = Configuration::get('GS_SHIPPING_MODE', 0, $shop_group_id, $shop_id);
         $shipping_price_fixed &= (bool) Configuration::get('GS_SHIPPING_PRICE_FIXED', 0, $shop_group_id, $shop_id);
@@ -971,6 +980,7 @@ trait AdminOptionsTrait
         return [
             'product_type[]' => $product_type,
             'title' => $title,
+            'capitalize_title' => (int) $capitalize_title,
             'description' => $description,
             'shipping_mode' => $shipping_mode,
             'shipping_price_fixed' => (int) $shipping_price_fixed,

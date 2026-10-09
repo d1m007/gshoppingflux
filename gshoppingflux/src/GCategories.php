@@ -15,7 +15,7 @@ use Validate;
  * Handles CRUD operations for Google Shopping category configurations across multiple shops and languages.
  *
  * @package GShoppingFlux
- * @copyright 2014-2025 Google Shopping Flux Contributors
+ * @copyright 2014-2026 Google Shopping Flux Contributors
  * @license Apache License 2.0
  */
 

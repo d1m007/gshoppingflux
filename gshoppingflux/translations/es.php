@@ -160,3 +160,5 @@ $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_b90c33f41b0c65d510aaa20761ffe
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_e8a49daf87debcf329561296e607caec'] = 'Tipo de título';
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_ec0193284c3d7c7e3d5c63bec2c8fd6d'] = 'Nombre y atributos';
 $_MODULE['<{gshoppingflux}prestashop>gshoppingflux_223025adb293a6e3e853af45a2b8efb6'] = 'Nombre y atributos y marca';
+$_MODULE['<{gshoppingflux}prestashop>gshoppingflux_e9099825cb8488c9e7d5dffca095d28b'] = 'Poner en mayúscula cada palabra del título y del título corto';
+$_MODULE['<{gshoppingflux}prestashop>gshoppingflux_ada6cc1f71fcee7f1eb49fb58ca1e28c'] = 'Pone en mayúscula la primera letra de cada palabra. Las palabras que ya contienen mayúsculas después de su primera letra (tallas, siglas, marcas) se conservan tal cual, p. ej. «funda iPhone talla XL» pasa a ser «Funda iPhone Talla XL».';
