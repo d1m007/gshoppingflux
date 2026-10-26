@@ -183,8 +183,142 @@ trait AdminOptionsTrait
         $cron_token = preg_replace('/[^a-zA-Z0-9_-]/', '', trim((string) Tools::getValue('cron_token')));
         $updated &= Configuration::updateValue('GS_CRON_TOKEN', $cron_token, false, (int) $shop_group_id, (int) $shop_id);
         $updated &= Configuration::updateValue('GS_AUTOEXPORT_ON_SAVE', (bool) Tools::getValue('autoexport_on_save'), false, (int) $shop_group_id, (int) $shop_id);
+        $updated &= $this->saveAdditionalAttributesOptions($shop_id, $shop_group_id);
 
         $this->reportSaveResult($updated, $shop_id, $shop_group_id);
+    }
+
+    /**
+     * Save the "Additional Google attributes" panel of the main form
+     * (same submit as saveFluxOptions(), split out to keep it readable).
+     *
+     * @param int $shop_id Shop ID
+     * @param int $shop_group_id Shop group ID
+     * @return bool True when every value was saved
+     */
+    private function saveAdditionalAttributesOptions($shop_id, $shop_group_id)
+    {
+        $oos_availability = Tools::getValue('oos_availability');
+        if (!in_array($oos_availability, self::VALID_OOS_AVAILABILITY, true)) {
+            $oos_availability = 'preorder';
+        }
+        $size_system = Tools::getValue('size_system');
+        if (!in_array($size_system, self::VALID_SIZE_SYSTEMS, true)) {
+            $size_system = '';
+        }
+        $size_type = Tools::getValue('size_type');
+        if (!in_array($size_type, self::VALID_SIZE_TYPES, true)) {
+            $size_type = '';
+        }
+        $excluded_destinations = array_intersect((array) Tools::getValue('excluded_destinations'), self::VALID_EXCLUDED_DESTINATIONS);
+        list($min_handling_time, $max_handling_time) = $this->sanitizeHandlingTimes(Tools::getValue('min_handling_time'), Tools::getValue('max_handling_time'));
+
+        $values = [
+            'GS_GTIN_ISBN' => (bool) Tools::getValue('gtin_isbn'),
+            'GS_OOS_AVAILABILITY' => $oos_availability,
+            'GS_AVAILABILITY_DATE' => (bool) Tools::getValue('availability_date'),
+            'GS_SALE_PRICE_DATES' => (bool) Tools::getValue('sale_price_dates'),
+            'GS_COST_OF_GOODS' => (bool) Tools::getValue('cost_of_goods'),
+            'GS_UNIT_PRICING_MEASURE' => (bool) Tools::getValue('unit_pricing_measure'),
+            'GS_IS_BUNDLE' => (bool) Tools::getValue('is_bundle'),
+            'GS_ITEM_GROUP_TITLE' => (bool) Tools::getValue('item_group_title'),
+            'GS_VARIANT_OPTION' => (bool) Tools::getValue('variant_option'),
+            'GS_PRODUCT_DETAIL' => (bool) Tools::getValue('product_detail'),
+            'GS_PRODUCT_DIMENSIONS' => (bool) Tools::getValue('product_dimensions'),
+            'GS_DOCUMENT_LINK' => (bool) Tools::getValue('document_link'),
+            'GS_ADULT' => (bool) Tools::getValue('adult'),
+            'GS_ENERGY_CLASS' => $this->sanitizeFeatureId(Tools::getValue('energy_class')),
+            'GS_MIN_ENERGY_CLASS' => $this->sanitizeFeatureId(Tools::getValue('min_energy_class')),
+            'GS_MAX_ENERGY_CLASS' => $this->sanitizeFeatureId(Tools::getValue('max_energy_class')),
+            'GS_EPREL_CODE' => $this->sanitizeFeatureId(Tools::getValue('eprel_code')),
+            'GS_SIZE_SYSTEM' => $size_system,
+            'GS_SIZE_TYPE' => $size_type,
+            'GS_SHIPS_FROM_COUNTRY' => $this->sanitizeCountryCode(Tools::getValue('ships_from_country')),
+            'GS_MIN_HANDLING_TIME' => $min_handling_time,
+            'GS_MAX_HANDLING_TIME' => $max_handling_time,
+            'GS_FREE_SHIPPING_THRESHOLD' => (bool) Tools::getValue('free_shipping_threshold'),
+            'GS_MINIMUM_ORDER_VALUE' => (bool) Tools::getValue('minimum_order_value'),
+            'GS_EXCLUDED_DESTINATIONS' => ArrayHelper::safeImplode(array_values($excluded_destinations)),
+            'GS_SHIPPING_LABEL' => $this->sanitizeLabelSource(Tools::getValue('shipping_label'), self::VALID_LABEL_SOURCES),
+            'GS_RETURN_POLICY_LABEL' => $this->sanitizeLabelSource(Tools::getValue('return_policy_label'), self::VALID_LABEL_SOURCES),
+        ];
+        for ($i = 0; $i < self::CUSTOM_LABELS_COUNT; ++$i) {
+            $values['GS_CUSTOM_LABEL_' . $i] = $this->sanitizeLabelSource(Tools::getValue('custom_label_' . $i), self::VALID_LABEL_SOURCES);
+        }
+
+        $updated = true;
+        foreach ($values as $key => $value) {
+            $updated &= Configuration::updateValue($key, $value, false, (int) $shop_group_id, (int) $shop_id);
+        }
+
+        return (bool) $updated;
+    }
+
+    /**
+     * Whitelist a custom label / shipping label / return policy label
+     * source: one of $valid_sources, or "feature_<id_feature>".
+     *
+     * @param mixed $source Submitted value
+     * @param array $valid_sources Accepted fixed sources (GShoppingFlux::VALID_LABEL_SOURCES)
+     * @return string The source, or '' (no label) when not accepted
+     */
+    private function sanitizeLabelSource($source, array $valid_sources)
+    {
+        $source = (string) $source;
+        if (in_array($source, $valid_sources, true) || preg_match('/^feature_[1-9][0-9]*$/', $source)) {
+            return $source;
+        }
+
+        return '';
+    }
+
+    /**
+     * Normalize a feature <select> value: a positive id_feature, or ''.
+     *
+     * @param mixed $id_feature Submitted value
+     * @return string
+     */
+    private function sanitizeFeatureId($id_feature)
+    {
+        return ctype_digit((string) $id_feature) && (int) $id_feature > 0 ? (string) (int) $id_feature : '';
+    }
+
+    /**
+     * Normalize an ISO 3166-1 alpha-2 country code, or '' when invalid.
+     *
+     * @param mixed $code Submitted value
+     * @return string
+     */
+    private function sanitizeCountryCode($code)
+    {
+        $code = Tools::strtoupper(trim((string) $code));
+
+        return preg_match('/^[A-Z]{2}$/', $code) ? $code : '';
+    }
+
+    /**
+     * Normalize the min/max handling times (whole business days, >= 0).
+     *
+     * An empty or non-numeric value means "not exported". When both are
+     * set but swapped, they are put back in order since Google rejects a
+     * min_handling_time greater than max_handling_time.
+     *
+     * @param mixed $min Submitted min_handling_time
+     * @param mixed $max Submitted max_handling_time
+     * @return array [min, max], each a numeric string or ''
+     */
+    private function sanitizeHandlingTimes($min, $max)
+    {
+        $min = trim((string) $min);
+        $max = trim((string) $max);
+        $min = ctype_digit($min) ? (string) (int) $min : '';
+        $max = ctype_digit($max) ? (string) (int) $max : '';
+
+        if ($min !== '' && $max !== '' && (int) $min > (int) $max) {
+            return [$max, $min];
+        }
+
+        return [$min, $max];
     }
 
     /**
@@ -476,6 +610,10 @@ trait AdminOptionsTrait
             [
                 'id_mpn' => 'supplier_reference',
                 'name' => $this->l('Supplier reference'),
+            ],
+            [
+                'id_mpn' => 'mpn',
+                'name' => $this->l('MPN field (PrestaShop 1.7.7+)'),
             ],
         ];
 
@@ -792,7 +930,247 @@ trait AdminOptionsTrait
             ],
         ];
 
-        return $helper->generateForm([$fields_form]);
+        // Both panels are rendered inside the same <form>, so the second one
+        // is posted (and saved by saveFluxOptions()) along with the first.
+        return $helper->generateForm([$fields_form, $this->getAdditionalAttributesFieldsForm($features)]);
+    }
+
+    /**
+     * Build the "Additional Google attributes" panel of the main form.
+     *
+     * @param array $features Feature options (with the leading "doesn't exist" entry) built by renderForm()
+     * @return array HelperForm fieldset definition
+     */
+    private function getAdditionalAttributesFieldsForm(array $features)
+    {
+        $label_sources = [
+            ['id_source' => '', 'name' => $this->l('Not exported')],
+            ['id_source' => 'manufacturer', 'name' => $this->l('Brand (manufacturer)')],
+            ['id_source' => 'supplier', 'name' => $this->l('Supplier')],
+            ['id_source' => 'category_default', 'name' => $this->l('Default category')],
+            ['id_source' => 'on_sale', 'name' => $this->l('"On sale" flag (on_sale / not_on_sale)')],
+            ['id_source' => 'condition', 'name' => $this->l('Condition')],
+            ['id_source' => 'reference', 'name' => $this->l('Reference')],
+        ];
+        foreach ($features as $feature) {
+            if (!empty($feature['id_feature'])) {
+                $label_sources[] = [
+                    'id_source' => 'feature_' . (int) $feature['id_feature'],
+                    'name' => $this->l('Feature:') . ' ' . $feature['name'],
+                ];
+            }
+        }
+
+        $label_select = function ($name, $label, $desc = null) use ($label_sources) {
+            $field = [
+                'type' => 'select',
+                'label' => $label,
+                'name' => $name,
+                'options' => [
+                    'query' => $label_sources,
+                    'id' => 'id_source',
+                    'name' => 'name',
+                ],
+            ];
+            if ($desc !== null) {
+                $field['desc'] = $desc;
+            }
+
+            return $field;
+        };
+        $feature_select = function ($name, $label, $desc) use ($features) {
+            return [
+                'type' => 'select',
+                'label' => $label,
+                'name' => $name,
+                'desc' => $desc,
+                'options' => [
+                    'query' => $features,
+                    'id' => 'id_feature',
+                    'name' => 'name',
+                ],
+            ];
+        };
+        $value_list = function (array $values, $empty_label) {
+            $options = [];
+            foreach ($values as $value) {
+                $options[] = ['id' => $value, 'name' => $value === '' ? $empty_label : $value];
+            }
+
+            return $options;
+        };
+
+        $inputs = [
+            $this->boolSwitchField(
+                'gtin_isbn',
+                $this->l('Use ISBN as GTIN'),
+                $this->l('Exports the ISBN as <g:gtin> for products with no EAN13/UPC (books). PrestaShop 1.7+.')
+            ),
+            [
+                'type' => 'select',
+                'label' => $this->l('Out of stock but orderable products'),
+                'name' => 'oos_availability',
+                'desc' => $this->l('Availability sent for products that are out of stock but can still be ordered. Google expects "backorder" for products being restocked, and "preorder" for products not released yet.'),
+                'options' => [
+                    'query' => [
+                        ['id' => 'preorder', 'name' => 'preorder'],
+                        ['id' => 'backorder', 'name' => 'backorder'],
+                    ],
+                    'id' => 'id',
+                    'name' => 'name',
+                ],
+            ],
+            $this->boolSwitchField(
+                'availability_date',
+                $this->l('Export availability date'),
+                $this->l('Exports the product (or combination) "Availability date" as <g:availability_date> for preorder/backorder products, when it is in the future.')
+            ),
+            $this->boolSwitchField(
+                'sale_price_dates',
+                $this->l('Export sale price effective dates'),
+                $this->l('Exports the start/end dates of the specific price as <g:sale_price_effective_date>, for discounts that have an end date.')
+            ),
+            $this->boolSwitchField(
+                'cost_of_goods',
+                $this->l('Export cost of goods sold'),
+                $this->l('Exports the wholesale price (tax excluded) as <g:cost_of_goods_sold>. Not visible to customers, used by Google for gross profit reporting.')
+            ),
+            $this->boolSwitchField(
+                'unit_pricing_measure',
+                $this->l('Export <unit_pricing_measure> tag (1 ct)'),
+                $this->l('Historical behavior: every product is sent with <g:unit_pricing_measure>1 ct</g:unit_pricing_measure>. Disable it to stop sending this tag.')
+            ),
+            $this->boolSwitchField(
+                'is_bundle',
+                $this->l('Flag packs as bundles'),
+                $this->l('Exports <g:is_bundle>yes</g:is_bundle> for PrestaShop packs.')
+            ),
+            $this->boolSwitchField(
+                'item_group_title',
+                $this->l('Export item group title'),
+                $this->l('For attributes combinations, exports the parent product name as <g:item_group_title>.')
+            ),
+            $this->boolSwitchField(
+                'variant_option',
+                $this->l('Export variant options'),
+                $this->l('For attributes combinations, exports every attribute group and value of the combination as <g:variant_option>.')
+            ),
+            $this->boolSwitchField(
+                'product_detail',
+                $this->l('Export features as product details'),
+                $this->l('Exports the product features as <g:product_detail>, except the ones already mapped to another Google attribute (gender, age group, color, material, pattern, size, energy classes, EPREL code, labels).')
+            ),
+            $this->boolSwitchField(
+                'product_dimensions',
+                $this->l('Export product dimensions and weight'),
+                $this->l('Exports <g:product_length>, <g:product_width>, <g:product_height> and <g:product_weight> (product without packaging), converted to units accepted by Google.')
+            ),
+            $this->boolSwitchField(
+                'document_link',
+                $this->l('Export PDF attachments'),
+                $this->l('Exports up to 5 PDF attachments of the product as <g:document_link>.')
+            ),
+            $this->boolSwitchField(
+                'adult',
+                $this->l('Adult content'),
+                $this->l('Exports <g:adult>yes</g:adult> for every product. Only enable it if your whole catalog is adult content.')
+            ),
+            $feature_select('energy_class', $this->l('Energy efficiency class feature'), $this->l('Feature holding the energy class (A+++ to G), exported as <g:energy_efficiency_class>. Only for products targeting Norway, Switzerland or the UK.')),
+            $feature_select('min_energy_class', $this->l('Minimum energy efficiency class feature'), $this->l('Exported as <g:min_energy_efficiency_class>.')),
+            $feature_select('max_energy_class', $this->l('Maximum energy efficiency class feature'), $this->l('Exported as <g:max_energy_efficiency_class>.')),
+            $feature_select('eprel_code', $this->l('EPREL registration number feature'), $this->l('Feature holding the EPREL code of the product, exported as a <g:certification> (EC / EPREL) for EU energy labels.')),
+            [
+                'type' => 'select',
+                'label' => $this->l('Size system'),
+                'name' => 'size_system',
+                'desc' => $this->l('Exported as <g:size_system> for products having a size.'),
+                'options' => [
+                    'query' => $value_list(self::VALID_SIZE_SYSTEMS, $this->l('Not exported')),
+                    'id' => 'id',
+                    'name' => 'name',
+                ],
+            ],
+            [
+                'type' => 'select',
+                'label' => $this->l('Size type'),
+                'name' => 'size_type',
+                'desc' => $this->l('Exported as <g:size_type> for products having a size.'),
+                'options' => [
+                    'query' => $value_list(self::VALID_SIZE_TYPES, $this->l('Not exported')),
+                    'id' => 'id',
+                    'name' => 'name',
+                ],
+            ],
+            [
+                'type' => 'text',
+                'label' => $this->l('Ships from country'),
+                'name' => 'ships_from_country',
+                'class' => 'fixed-width-xs',
+                'desc' => $this->l('ISO 3166-1 alpha-2 code (e.g. FR) exported as <g:ships_from_country>. Leave empty for no use.'),
+            ],
+            [
+                'type' => 'text',
+                'label' => $this->l('Minimum handling time'),
+                'name' => 'min_handling_time',
+                'class' => 'fixed-width-xs',
+                'suffix' => $this->l('days'),
+                'desc' => $this->l('Business days between order and shipment, exported as <g:min_handling_time>. Leave empty for no use.'),
+            ],
+            [
+                'type' => 'text',
+                'label' => $this->l('Maximum handling time'),
+                'name' => 'max_handling_time',
+                'class' => 'fixed-width-xs',
+                'suffix' => $this->l('days'),
+                'desc' => $this->l('Exported as <g:max_handling_time>. Leave empty for no use.'),
+            ],
+            $this->boolSwitchField(
+                'free_shipping_threshold',
+                $this->l('Export free shipping threshold'),
+                $this->l('Exports the "Free shipping starts at" amount of the shipping preferences as <g:free_shipping_threshold>, for the shipping country above.')
+            ),
+            $this->boolSwitchField(
+                'minimum_order_value',
+                $this->l('Export minimum order value'),
+                $this->l('Exports the "Minimum purchase total required in order to validate the order" amount as <g:minimum_order_value>, for the shipping country above.')
+            ),
+            [
+                'type' => 'select',
+                'multiple' => true,
+                'label' => $this->l('Excluded destinations'),
+                'name' => 'excluded_destinations[]',
+                'desc' => $this->l('Exported as <g:excluded_destination> for every product. Hold [Ctrl] key pressed to select multiple destinations.'),
+                'options' => [
+                    'query' => $value_list(self::VALID_EXCLUDED_DESTINATIONS, ''),
+                    'id' => 'id',
+                    'name' => 'name',
+                ],
+            ],
+        ];
+
+        for ($i = 0; $i < self::CUSTOM_LABELS_COUNT; ++$i) {
+            $inputs[] = $label_select(
+                'custom_label_' . $i,
+                sprintf($this->l('Custom label %d'), $i),
+                $i === 0 ? $this->l('Value exported as <g:custom_label_N>, to organize your Shopping campaigns bidding and reporting (max 100 characters).') : null
+            );
+        }
+        $inputs[] = $label_select('shipping_label', $this->l('Shipping label'), $this->l('Exported as <g:shipping_label>, to match the shipping settings of your Merchant Center account.'));
+        $inputs[] = $label_select('return_policy_label', $this->l('Return policy label'), $this->l('Exported as <g:return_policy_label>, to match the return policies of your Merchant Center account.'));
+
+        return [
+            'form' => [
+                'legend' => [
+                    'title' => $this->l('Additional Google attributes'),
+                    'icon' => 'icon-tags',
+                ],
+                'input' => $inputs,
+                'submit' => [
+                    'name' => 'submitFluxOptions',
+                    'title' => $this->l('Save & Export'),
+                ],
+            ],
+        ];
     }
 
     /**
@@ -976,6 +1354,20 @@ trait AdminOptionsTrait
         $file_prefix = Configuration::get('GS_FILE_PREFIX', 0, $shop_group_id, $shop_id);
         $cron_token = Configuration::get('GS_CRON_TOKEN', 0, $shop_group_id, $shop_id);
 
+        // Additional Google attributes: read through getConfigOrDefault(),
+        // since a shop upgraded from an older version has none of these keys.
+        $additional = [];
+        foreach (['gtin_isbn', 'availability_date', 'sale_price_dates', 'cost_of_goods', 'unit_pricing_measure', 'is_bundle', 'item_group_title', 'variant_option', 'product_detail', 'product_dimensions', 'document_link', 'adult', 'free_shipping_threshold', 'minimum_order_value'] as $field) {
+            $additional[$field] = (int) (bool) $this->getConfigOrDefault('GS_' . Tools::strtoupper($field), $shop_group_id, $shop_id);
+        }
+        foreach (['oos_availability', 'energy_class', 'min_energy_class', 'max_energy_class', 'eprel_code', 'size_system', 'size_type', 'ships_from_country', 'min_handling_time', 'max_handling_time', 'shipping_label', 'return_policy_label'] as $field) {
+            $additional[$field] = (string) $this->getConfigOrDefault('GS_' . Tools::strtoupper($field), $shop_group_id, $shop_id);
+        }
+        for ($i = 0; $i < self::CUSTOM_LABELS_COUNT; ++$i) {
+            $additional['custom_label_' . $i] = (string) $this->getConfigOrDefault('GS_CUSTOM_LABEL_' . $i, $shop_group_id, $shop_id);
+        }
+        $additional['excluded_destinations[]'] = ArrayHelper::safeExplode((string) $this->getConfigOrDefault('GS_EXCLUDED_DESTINATIONS', $shop_group_id, $shop_id));
+
         // Return formatted array for form display
         return [
             'product_type[]' => $product_type,
@@ -1009,7 +1401,27 @@ trait AdminOptionsTrait
             'file_prefix' => $file_prefix,
             'cron_token' => $cron_token,
             'autoexport_on_save' => (int) $autoexport_on_save,
-        ];
+        ] + $additional;
+    }
+
+    /**
+     * Read a GS_* setting, falling back to its CONFIG_DEFAULTS value when
+     * the key was never stored (a shop upgraded from a version that didn't
+     * have it yet), so new options keep the previous feed output.
+     *
+     * @param string $key Configuration key
+     * @param int $shop_group_id Shop group ID
+     * @param int $shop_id Shop ID
+     * @return mixed
+     */
+    private function getConfigOrDefault($key, $shop_group_id, $shop_id)
+    {
+        $value = Configuration::get($key, 0, $shop_group_id, $shop_id);
+        if (($value === false || $value === null) && array_key_exists($key, self::CONFIG_DEFAULTS)) {
+            return self::CONFIG_DEFAULTS[$key];
+        }
+
+        return $value;
     }
 
     /**

@@ -52,8 +52,34 @@ Depending on your store and what you want to send to google, you would need to c
 - ✅ Customizable category mapping
 - ✅ Shipping cost calculation
 - ✅ PrestaShop 9 compatible
+- ✅ Additional Google attributes (all optional, disabled by default): ISBN as GTIN, native MPN field, backorder, availability date, sale price effective dates, cost of goods sold, bundles, item group title, variant options, product details, product dimensions/weight, PDF documents, adult, energy classes and EPREL certification, size system/type, shipping/handling attributes, excluded destinations, custom labels, shipping and return policy labels
 
 ## Changelog
+
+### Version 1.9.0 (2026)
+
+New "Additional Google attributes" panel, following the latest [Google product data specification](https://support.google.com/merchants/answer/7052112). Every new option is disabled (or empty) by default, so an existing feed stays exactly the same until you enable them:
+
+- `<g:gtin>` from the ISBN for products with no EAN13/UPC, ISBN-10 converted to ISBN-13 (PrestaShop 1.7+)
+- `<g:mpn>` from the native MPN field, as a new "Manufacturers References type" choice (PrestaShop 1.7.7+)
+- Option to send `backorder` instead of `preorder` for out of stock products that can still be ordered (default: `preorder`), and new "backorder" availability for categories
+- `<g:availability_date>` from the product/combination availability date, for preorder/backorder products
+- `<g:sale_price_effective_date>` from the specific price start/end dates
+- `<g:cost_of_goods_sold>` from the wholesale price
+- Option to stop sending `<g:unit_pricing_measure>1 ct</g:unit_pricing_measure>` (default: still sent)
+- `<g:is_bundle>` for packs
+- `<g:item_group_title>` and `<g:variant_option>` for attributes combinations
+- `<g:product_detail>` from the product features not already mapped to another attribute
+- `<g:product_length>`, `<g:product_width>`, `<g:product_height>`, `<g:product_weight>`, converted to the units accepted by Google
+- `<g:document_link>` from the product PDF attachments
+- `<g:adult>`
+- `<g:energy_efficiency_class>`, `<g:min_energy_efficiency_class>`, `<g:max_energy_efficiency_class>` and `<g:certification>` (EPREL) from product features
+- `<g:size_system>` and `<g:size_type>`
+- `<g:ships_from_country>`, `<g:min_handling_time>`, `<g:max_handling_time>`, `<g:free_shipping_threshold>`, `<g:minimum_order_value>`
+- `<g:excluded_destination>`
+- `<g:custom_label_0>` to `<g:custom_label_4>`, `<g:shipping_label>` and `<g:return_policy_label>`, each filled from the brand, supplier, default category, "on sale" flag, condition, reference or any product feature
+- German, Spanish, French and Italian translations for the new options (and the few older strings that were missing)
+- Unit tests for the new attributes, including a check that a shop upgraded without the new settings keeps the same feed
 
 ### Version 1.8.3 (2026)
 
