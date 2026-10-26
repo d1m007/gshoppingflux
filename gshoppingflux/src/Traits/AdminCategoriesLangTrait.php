@@ -154,6 +154,10 @@ trait AdminCategoriesLangTrait
                 'id_mode' => 'preorder',
                 'name' => $this->l('Category\'s products avail. on preorder'),
             ],
+            [
+                'id_mode' => 'backorder',
+                'name' => $this->l('Category\'s products avail. on backorder'),
+            ],
         ];
 
         // Build gender options

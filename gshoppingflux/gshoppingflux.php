@@ -9,7 +9,7 @@
  * @package GShoppingFlux
  * @copyright 2014-2026 Google Shopping Flux Contributors
  * @license Apache License 2.0
- * @version 1.8.3
+ * @version 1.9.0
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -124,6 +124,40 @@ class GShoppingFlux extends Module
         'GS_FILE_PREFIX' => '',
         'GS_LOCAL_SHOP_CODE' => '',
         'GS_CRON_TOKEN' => '',
+        // Additional Google attributes (1.9.0). Every default keeps the feed
+        // exactly as it was before these options existed.
+        'GS_GTIN_ISBN' => '0',
+        'GS_OOS_AVAILABILITY' => 'preorder',
+        'GS_AVAILABILITY_DATE' => '0',
+        'GS_SALE_PRICE_DATES' => '0',
+        'GS_COST_OF_GOODS' => '0',
+        'GS_UNIT_PRICING_MEASURE' => '1',
+        'GS_IS_BUNDLE' => '0',
+        'GS_ITEM_GROUP_TITLE' => '0',
+        'GS_VARIANT_OPTION' => '0',
+        'GS_PRODUCT_DETAIL' => '0',
+        'GS_PRODUCT_DIMENSIONS' => '0',
+        'GS_DOCUMENT_LINK' => '0',
+        'GS_ADULT' => '0',
+        'GS_ENERGY_CLASS' => '',
+        'GS_MIN_ENERGY_CLASS' => '',
+        'GS_MAX_ENERGY_CLASS' => '',
+        'GS_EPREL_CODE' => '',
+        'GS_SIZE_SYSTEM' => '',
+        'GS_SIZE_TYPE' => '',
+        'GS_SHIPS_FROM_COUNTRY' => '',
+        'GS_MIN_HANDLING_TIME' => '',
+        'GS_MAX_HANDLING_TIME' => '',
+        'GS_FREE_SHIPPING_THRESHOLD' => '0',
+        'GS_MINIMUM_ORDER_VALUE' => '0',
+        'GS_EXCLUDED_DESTINATIONS' => '',
+        'GS_CUSTOM_LABEL_0' => '',
+        'GS_CUSTOM_LABEL_1' => '',
+        'GS_CUSTOM_LABEL_2' => '',
+        'GS_CUSTOM_LABEL_3' => '',
+        'GS_CUSTOM_LABEL_4' => '',
+        'GS_SHIPPING_LABEL' => '',
+        'GS_RETURN_POLICY_LABEL' => '',
     ];
 
     /**
@@ -133,13 +167,27 @@ class GShoppingFlux extends Module
      * string means "inherit from parent"/"no override" where applicable.
      */
     const VALID_CONDITIONS = ['', 'new', 'used', 'refurbished'];
-    const VALID_AVAILABILITY = ['', 'in stock', 'preorder'];
+    const VALID_AVAILABILITY = ['', 'in stock', 'preorder', 'backorder'];
     const VALID_GENDERS = ['', 'male', 'female', 'unisex'];
     const VALID_AGE_GROUPS = ['', 'newborn', 'infant', 'toddler', 'kids', 'adult'];
     const VALID_TITLES = ['name+attributes', 'name+attributes+brand'];
     const VALID_DESCRIPTIONS = ['short', 'long', 'short+long', 'meta'];
     const VALID_SHIPPING_MODES = ['none', 'fixed', 'full'];
-    const VALID_MPN_TYPES = ['reference', 'supplier_reference'];
+    const VALID_MPN_TYPES = ['reference', 'supplier_reference', 'mpn'];
+    /** <g:availability> sent for an out-of-stock product that can still be ordered */
+    const VALID_OOS_AVAILABILITY = ['preorder', 'backorder'];
+    const VALID_SIZE_SYSTEMS = ['', 'AU', 'BR', 'CN', 'DE', 'EU', 'FR', 'IT', 'JP', 'MEX', 'UK', 'US'];
+    const VALID_SIZE_TYPES = ['', 'regular', 'petite', 'maternity', 'big', 'tall', 'plus'];
+    const VALID_EXCLUDED_DESTINATIONS = ['Shopping_ads', 'Buy_on_Google_listings', 'Display_ads', 'Local_inventory_ads', 'Free_listings', 'Free_local_listings', 'YouTube_Shopping'];
+    const VALID_ENERGY_CLASSES = ['A+++', 'A++', 'A+', 'A', 'B', 'C', 'D', 'E', 'F', 'G'];
+    /**
+     * Product data a custom_label_N / shipping_label / return_policy_label
+     * can be filled from. A "feature_<id_feature>" value (one PrestaShop
+     * feature) is also accepted, see sanitizeLabelSource().
+     */
+    const VALID_LABEL_SOURCES = ['', 'manufacturer', 'supplier', 'category_default', 'on_sale', 'condition', 'reference'];
+    /** Number of <g:custom_label_N> attributes Google accepts (custom_label_0 to custom_label_4) */
+    const CUSTOM_LABELS_COUNT = 5;
 
     // ============================================================
     // CLASS PROPERTIES
@@ -203,6 +251,12 @@ class GShoppingFlux extends Module
      */
     private $carriersByZoneCache = [];
 
+    /**
+     * Per-generateFile()-run cache of default category names keyed by
+     * id_category, used by the "default category" custom label source.
+     */
+    private $categoryNamesCache = [];
+
     // ============================================================
     // CONSTRUCTOR
     // ============================================================
@@ -217,7 +271,7 @@ class GShoppingFlux extends Module
     {
         $this->name = 'gshoppingflux';
         $this->tab = 'smart_shopping';
-        $this->version = '1.8.3';
+        $this->version = '1.9.0';
         $this->author = 'Dim00z';
         $this->bootstrap = true;
 

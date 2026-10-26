@@ -22,6 +22,22 @@ class Tools
         return mb_substr((string) $string, $start, $length, $encoding);
     }
 
+    public static function strtolower($string)
+    {
+        return mb_strtolower((string) $string, 'UTF-8');
+    }
+
+    public static function strtoupper($string)
+    {
+        return mb_strtoupper((string) $string, 'UTF-8');
+    }
+
+    /** Converts from the default currency: only $currency_to's conversion_rate is applied */
+    public static function convertPriceFull($amount, $currency_from = null, $currency_to = null)
+    {
+        return (float) $amount * ($currency_to ? $currency_to->conversion_rate : 1);
+    }
+
     public static function getValue($key, $defaultValue = false)
     {
         if (isset($_POST[$key])) {
