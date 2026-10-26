@@ -78,7 +78,7 @@ New "Additional Google attributes" panel, following the latest [Google product d
 - `<g:ships_from_country>`, `<g:min_handling_time>`, `<g:max_handling_time>`, `<g:free_shipping_threshold>`, `<g:minimum_order_value>`
 - `<g:excluded_destination>`
 - `<g:custom_label_0>` to `<g:custom_label_4>`, `<g:shipping_label>` and `<g:return_policy_label>`, each filled from the brand, supplier, default category, "on sale" flag, condition, reference or any product feature
-- French translations for the new options
+- German, Spanish, French and Italian translations for the new options (and the few older strings that were missing)
 - Unit tests for the new attributes, including a check that a shop upgraded without the new settings keeps the same feed
 
 ### Version 1.8.3 (2026)
